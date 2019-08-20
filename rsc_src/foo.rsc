@@ -1,1 +1,0 @@
-pub func foo_func(): () = ();

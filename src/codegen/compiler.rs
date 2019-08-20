@@ -64,6 +64,7 @@ fn compile_primative(expr: &Expression) -> CompileResult<String> {
         }),
         Identifier(s) => Ok(s.to_string()),
         String(s) => Ok(format!("`{}`", s)),
+        Tuple(values) if values.is_empty() => Ok("undefined".into()),
         Tuple(values) => {
             let content: Vec<_> = values
                 .iter()
@@ -153,7 +154,7 @@ pub fn compile_statement(stmt: &Statement) -> CompileResult<String> {
                 .collect();
             let params = params.join(",");
             let body = compile_expression(body)?;
-            let mut code = format!("let {}=({})=>{};", identifier, params, body);
+            let mut code = format!("const {}=({})=>{};", identifier, params, body);
             if let Visibility::Public = visibility {
                 let export = format!("this.{}={};", identifier, identifier);
                 code.push_str(&export);

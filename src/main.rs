@@ -4,6 +4,7 @@ use crate::parser::ast::{Parser, Visibility};
 use crate::parser::lexer::Lexer;
 use crate::parser::resolver::parse_module;
 use std::fs;
+use std::process::Command;
 
 // mod type_checker;
 
@@ -78,19 +79,20 @@ fn print_with_pointer(s: &str, ptr: &parser::Span) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let file = fs::read_to_string("./test.rsc")?;
+    // let file = fs::read_to_string("./rsc_src/main.rsc")?;
     // println!("{}", file);
     // let mut lexer = Lexer::new(&file);
     // let tokens = lexer.tokens()?;
-    // println!("{}", tokens.len());
+    // println!("num tokens: {}", tokens.len());
     // println!(
-    //     "{:#?}",
-    //     lexer
-    //         .tokens()?
+    //     "tokens: {:#?}",
+    //     tokens
     //         .into_iter()
     //         .map(|token| token.kind)
     //         .collect::<Vec<_>>()
     // );
+    // let mut parser = Parser::new(lexer);
+    // println!("{:?}", parser.parse_statement()?);
     // let module = resolve(Visibility::Public, "<main>", "./test.rsc").unwrap();
     // println!("{:#?}", module);
     // Ok(())
@@ -107,12 +109,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let module = parse_module("./rsc_src")?;
     let compiled = crate::codegen::compiler::compile_module(&module)?;
-    println!("{}", compiled);
-
-    // let prg = "func square(x: Int): Int = { if x then x * x else y }";
-    // let expr = Parser::new(Lexer::new(prg)).parse_statement()?;
-    // let compiled = crate::codegen::compiler::compile_statement(&expr)?;
-    // println!("{}", compiled);
+    let program = format!(
+        "log=console.log;module={}console.log(module.main.main());",
+        compiled
+    );
+    fs::write("out.js", program)?;
 
     Ok(())
 }

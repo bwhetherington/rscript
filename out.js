@@ -1,0 +1,1 @@
+log=console.log;module=(new(function(){this.main=(new(function(){const main=()=>(()=>{log(fibonacci(10));return undefined;})();this.main=main;})());})());console.log(module.main.main());
