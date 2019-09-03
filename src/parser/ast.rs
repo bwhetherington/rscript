@@ -67,7 +67,7 @@ pub enum Expression {
     Int(i32),
     Float(f64),
     Boolean(bool),
-    Identifier(String),
+    Identifier(Vec<String>),
     String(String),
     Binary(BinaryOp, Box<Expression>, Box<Expression>),
     Unary(UnaryOp, Box<Expression>),
@@ -76,7 +76,6 @@ pub enum Expression {
     Block(Vec<Statement>, Box<Expression>),
     Tuple(Vec<Expression>),
     List(Vec<Expression>),
-    Path(Vec<String>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
     Lambda(Vec<InferParameter>, Box<Expression>),
     Xml(XmlNode),
@@ -122,6 +121,10 @@ pub enum Visibility {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
+    Import {
+        path: Vec<String>,
+        alias: String,
+    },
     Expression(Expression),
     Assignment {
         visibility: Visibility,
@@ -227,6 +230,8 @@ struct BlockData {
     last_expr: Option<Expression>,
 }
 
+type Identifier = Vec<String>;
+
 impl<I: TokenIter> Parser<I> {
     pub fn new(lexer: I) -> Parser<I> {
         Parser {
@@ -315,6 +320,28 @@ impl<I: TokenIter> Parser<I> {
 
     fn next_token_internal(&mut self) -> ParseResult<Token> {
         self.next_token()?.ok_or_else(|| ParseError::EOF)
+    }
+
+    fn parse_full_identifier(&mut self) -> ParseResult<Vec<String>> {
+        let mut buf = Vec::new();
+
+        loop {
+            let i = self.parse_identifier()?;
+            buf.push(i);
+            let tok = self.next_token()?;
+            if let Some(tok) = tok {
+                if let TokenKind::DoubleColon = tok.kind {
+                    continue;
+                } else {
+                    self.unread(tok);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(buf)
     }
 
     fn parse_expr_internal(&mut self, base_expr: Expression) -> ParseResult<Expression> {
@@ -433,7 +460,11 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::Float(f) => Ok(Expression::Float(f)),
             TokenKind::Boolean(b) => Ok(Expression::Boolean(b)),
             TokenKind::String(s) => Ok(Expression::String(s)),
-            TokenKind::Identifier(i) => Ok(Expression::Identifier(i)),
+            TokenKind::Identifier(_) => {
+                self.unread(token);
+                let ident = self.parse_full_identifier()?;
+                Ok(Expression::Identifier(ident))
+            }
             // !expr
             TokenKind::Not => {
                 let expr = self.parse_expr()?;
@@ -655,6 +686,22 @@ impl<I: TokenIter> Parser<I> {
                     parameter: ident,
                     value: body,
                 })
+            }
+            TokenKind::Import => {
+                let path = self.parse_full_identifier()?;
+                let default_alias = path.last().unwrap();
+
+                let alias = if let Some(token) = self.next_token()? {
+                    if let TokenKind::As = token.kind {
+                        self.parse_identifier()?
+                    } else {
+                        default_alias.to_string()
+                    }
+                } else {
+                    default_alias.to_string()
+                };
+
+                Ok(Statement::Import { path, alias })
             }
             // Parse expression or assignment
             _ => {

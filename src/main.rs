@@ -1,5 +1,6 @@
 mod codegen;
 mod parser;
+use crate::codegen::compiler::Compiler;
 use crate::parser::ast::{Parser, Visibility};
 use crate::parser::lexer::Lexer;
 use crate::parser::resolver::parse_module;
@@ -108,9 +109,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // );
 
     let module = parse_module("./rsc_src")?;
-    let compiled = crate::codegen::compiler::compile_module(&module)?;
+    let mut compiler = Compiler::new("rsc_module");
+    let compiled = compiler.compile_module(&module)?;
     let program = format!(
-        "log=console.log;module={}console.log(module.main.main());",
+        "log=console.log;rsc_module={}rsc_module.main.main();",
         compiled
     );
     fs::write("out.js", program)?;

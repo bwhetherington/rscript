@@ -61,9 +61,11 @@ pub enum TokenKind {
     String(String),
     Boolean(bool),
     Public,
+    Import,
+    As,
 }
 
-const TOKENS: [(&'static str, TokenKind); 10] = [
+const TOKENS: [(&'static str, TokenKind); 12] = [
     ("true", TokenKind::Boolean(true)),
     ("false", TokenKind::Boolean(false)),
     ("if", TokenKind::If),
@@ -74,6 +76,8 @@ const TOKENS: [(&'static str, TokenKind); 10] = [
     ("func", TokenKind::Function),
     ("type", TokenKind::Type),
     ("pub", TokenKind::Public),
+    ("import", TokenKind::Import),
+    ("as", TokenKind::As),
 ];
 
 fn is_delimiter(ch: char) -> bool {
