@@ -29,20 +29,59 @@ impl std::fmt::Display for CompileError {
 impl std::error::Error for CompileError {}
 
 pub struct Compiler {
-    cur_symbol: u32,
     cur_module: Vec<String>,
-    symbols: HashMap<String, u32>,
+    symbols: Vec<HashMap<String, String>>,
     root: &'static str,
+}
+
+struct Import {
+    getter: String,
+    js_value: String,
 }
 
 impl Compiler {
     pub fn new(root: &'static str) -> Compiler {
         Compiler {
-            cur_symbol: 0,
             cur_module: Vec::new(),
-            symbols: HashMap::new(),
-            root
+            symbols: Vec::new(),
+            root,
         }
+    }
+
+    fn lookup_symbol<'a, 'b>(&'a self, key: &'b str) -> Option<&'a String> {
+        self.symbols
+            .iter()
+            .rev()
+            .filter(|map| map.contains_key(key))
+            .next()
+            .and_then(|map| map.get(key))
+    }
+
+    fn insert_symbol(&mut self, key: String, value: String) {
+        self.symbols
+            .iter_mut()
+            .rev()
+            .next()
+            .map(|map| map.insert(key, value));
+    }
+
+    fn process_imports(&mut self, statements: &[Statement]) -> CompileResult<Vec<Statement>> {
+        let mut others = Vec::new();
+
+        for statement in statements {
+            match statement {
+                Statement::Import { path, alias } => {
+                    // foo
+                    // Compile the object we will use
+                    let identifier = self.compile_identifier(path);
+
+                    // Insert into our symbol table
+                    self.insert_symbol(alias.clone(), identifier);
+                }
+                other => others.push(other.clone()),
+            }
+        }
+        Ok(others)
     }
 
     fn join_paths(&self, prefix: &[String], suffix: &[String]) -> String {
@@ -56,6 +95,12 @@ impl Compiler {
         } else {
             self.join_paths(&self.cur_module, identifier)
         }
+    }
+
+    fn compile_identifier_expression(&self, identifier: &[String]) -> String {
+        let ident = self.compile_identifier(identifier);
+
+        self.lookup_symbol(&ident).cloned().unwrap_or_else(|| ident)
     }
 
     fn compile_binary_op(&self, op: &BinaryOp) -> CompileResult<String> {
@@ -93,12 +138,73 @@ impl Compiler {
             } else {
                 "false".to_string()
             }),
-            String(s) => Ok(format!("`{}`", s)),
+            String(s) => {
+                let mut buf = std::string::String::new();
+                for ch in s.chars() {
+                    match ch {
+                        '`' => {
+                            buf.push_str("\\`");
+                        }
+                        ch => buf.push(ch),
+                    }
+                }
+                Ok(format!("`{}`", buf))
+            }
             other => Err(CompileError::Message(format!(
                 "{:?} is not a primitive value",
                 other
             ))),
         }
+    }
+
+    fn compile_location(&mut self, location: &Expression) -> CompileResult<String> {
+        use Expression::*;
+        match location {
+            Member(value, member) => {
+                let value = self.compile_expression(value)?;
+                Ok(format!("{}[\"{}\"]", value, member))
+            }
+            Index(value, index) => {
+                let value = self.compile_expression(value)?;
+                let index = self.compile_expression(index)?;
+                Ok(format!("{}[{}]", value, index))
+            }
+            Identifier(path) => {
+                let path = self.compile_identifier(path);
+                Ok(path)
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    fn compile_reassignment(
+        &mut self,
+        location: &Expression,
+        value: &Expression,
+    ) -> CompileResult<String> {
+        let location = self.compile_location(location)?;
+        let value = self.compile_expression(value)?;
+        Ok(format!("{}={};", location, value))
+    }
+
+    fn compile_statements(&mut self, statements: &[Statement]) -> CompileResult<String> {
+        // Add new level to symbols table
+        self.symbols.push(HashMap::new());
+
+        // Split statements into imports and non imports
+        let statements = self.process_imports(statements)?;
+
+        // Compile remaining statements
+        let statements: Vec<_> = statements
+            .iter()
+            .map(|statement| self.compile_statement(statement))
+            .collect::<Result<_, _>>()?;
+        let statements_str = statements.join("");
+
+        // Remove level from symbols table
+        self.symbols.pop();
+
+        Ok(statements_str)
     }
 
     fn compile_expression(&mut self, expr: &Expression) -> CompileResult<String> {
@@ -125,23 +231,56 @@ impl Compiler {
 
                 Ok(format!("[{}]", inner))
             }
-            Identifier(path) => {
-                let symbol = self.compile_identifier(path);
-                Ok(format!("eval({})", symbol))
-            }
+            Identifier(path) => Ok(self.compile_identifier_expression(path)),
             Member(expr, identifier) => {
                 let expr = self.compile_expression(expr)?;
-                Ok(format!("({}[{}])", expr, identifier))
+                Ok(format!("({}[\"{}\"])", expr, identifier))
             }
             Call(func, args) => {
                 let func = self.compile_expression(func.as_ref())?;
-                let args: Result<Vec<_>, _> = args
+
+                // // Check if we are compiling a curried function
+                // let mut curried_arg_indices = Vec::new();
+                // for (index, arg) in args.into_iter().enumerate() {
+                //     match arg {
+                //         Expression::Identifier(path) => match &path[..] {
+                //             [param] if param == "_" => {
+                //                 curried_arg_indices.push(index);
+                //             }
+                //             _ => (),
+                //         },
+                //         _ => (),
+                //     }
+                // }
+
+                // if !curried_arg_indices.is_empty() {
+                //     let mut compiled_args: Vec<std::string::String> = Vec::new();
+                //     for index in 0..args.len() {
+                //         if curried_arg_indices.contains(&index) {
+                //             compiled_args.push(format!("__arg_{}", index));
+                //         } else {
+                //             let compiled_arg = self.compile_expression(&args[index])?;
+                //             compiled_args.push(compiled_arg);
+                //         }
+                //     }
+                //     let compiled_args = compiled_args.join(",");
+
+                //     let params: Vec<_> = curried_arg_indices
+                //         .iter()
+                //         .map(|index| format!("__arg_{}", index))
+                //         .collect();
+                //     let params = params.join(",");
+
+                //     let compiled = format!("(({})=>{}({}))", params, func, compiled_args);
+                //     Ok(compiled)
+                // } else {
+                let args: Vec<_> = args
                     .into_iter()
                     .map(|arg| self.compile_expression(arg))
-                    .collect();
-                let args = args?;
+                    .collect::<Result<_, _>>()?;
                 let args = args.join(",");
-                Ok(format!("{}({})", func, args))
+                Ok(format!("({})({})", func, args))
+                // }
             }
             Binary(op, lhs, rhs) => {
                 let op = self.compile_binary_op(op)?;
@@ -151,12 +290,7 @@ impl Compiler {
             }
             Block(statements, value) => {
                 // foo
-                let statements: Result<Vec<_>, _> = statements
-                    .into_iter()
-                    .map(|stmt| self.compile_statement(stmt))
-                    .collect();
-                let statements = statements?;
-                let statements = statements.join("");
+                let statements = self.compile_statements(statements)?;
                 let value = self.compile_expression(value)?;
                 Ok(format!("(()=>{{{}return {};}})()", statements, value))
             }
@@ -170,6 +304,17 @@ impl Compiler {
                 let expr = self.compile_expression(expr)?;
                 let index = self.compile_expression(index)?;
                 Ok(format!("({}[{}])", expr, index))
+            }
+            Lambda(params, body) => {
+                // Compile params
+                let params: Vec<_> = params
+                    .into_iter()
+                    .map(|param| param.identifier.clone())
+                    .collect();
+                let params = params.join(",");
+                let body = self.compile_expression(body)?;
+
+                Ok(format!("({})=>{}", params, body))
             }
             other => self.compile_primative(other),
         }
@@ -187,7 +332,7 @@ impl Compiler {
                 let identifier = self.compile_identifier(&[identifier.to_string()]);
                 let params: Vec<_> = parameters
                     .into_iter()
-                    .map(|Parameter { identifier, .. }| identifier.clone())
+                    .map(|identifier| identifier.clone())
                     .collect();
                 let params = params.join(",");
                 let body = self.compile_expression(body)?;
@@ -209,7 +354,7 @@ impl Compiler {
                 value,
             } => {
                 let value = self.compile_expression(value)?;
-                let ident = &parameter.identifier;
+                let ident = &parameter;
                 let mut code = if *mutable {
                     format!("let {}={};", ident, value)
                 } else {
@@ -219,15 +364,15 @@ impl Compiler {
                 Ok(code)
             }
             Statement::Reassignment { location, value } => {
-                let location = self.compile_expression(location)?;
-                let value = self.compile_expression(value)?;
-                Ok(format!("{}={};", location, value))
+                self.compile_reassignment(location, value)
             }
-            Statement::Import { path, alias } => Ok(format!(
-                "const {}=\"{}\";",
-                alias,
-                self.compile_identifier(path)
-            )),
+            Statement::Import { path, alias } => {
+                // foo
+                // Compile the object we will use
+                let identifier = self.compile_identifier(path);
+                let getter = format!("{{get {}(){{return eval({});}}}}", alias, identifier);
+                Ok(format!("const __get_{}={};", alias, getter))
+            }
             Statement::TypeAlias { .. } => Ok("".to_string()),
             // _ => Err(CompileError::Message(format!(
             //     "{:?} is not a valid statement",
@@ -238,13 +383,7 @@ impl Compiler {
 
     pub fn compile_module(&mut self, module: &Module) -> CompileResult<String> {
         // Compile current module
-        let statements: Result<Vec<_>, _> = module
-            .body
-            .iter()
-            .map(|stmt| self.compile_statement(stmt))
-            .collect();
-        let statements = statements?;
-        let mut statements = statements.join("");
+        let mut statements = self.compile_statements(&module.body)?;
 
         // Compile each child module
         for child in &module.children {

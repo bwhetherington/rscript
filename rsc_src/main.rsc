@@ -1,6 +1,8 @@
-import factorial::factorial as foo;
+import foo::foo;
 
-pub func main() = {
-  let val = test::functions::fibonacci(30);
-  log(val);
+fn add(x, y) = x + y;
+
+pub fn main() = {
+  let sum = add(4, add(9, 3));
+  console.log(foo::id(sum));
 };

@@ -1,0 +1,137 @@
+Module {
+    identifier: "rsc_src",
+    body: [],
+    children: [
+        Module {
+            identifier: "main",
+            body: [
+                Import {
+                    path: [
+                        "foo",
+                        "foo",
+                    ],
+                    alias: "bar",
+                },
+                FunctionDeclaration {
+                    visibility: Private,
+                    identifier: "add",
+                    parameters: [
+                        "x",
+                        "y",
+                    ],
+                    body: Binary(
+                        Plus,
+                        Identifier(
+                            [
+                                "x",
+                            ],
+                        ),
+                        Identifier(
+                            [
+                                "y",
+                            ],
+                        ),
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "main",
+                    parameters: [],
+                    body: Block(
+                        [
+                            Assignment {
+                                visibility: Private,
+                                mutable: false,
+                                parameter: "sum",
+                                value: Call(
+                                    Identifier(
+                                        [
+                                            "add",
+                                        ],
+                                    ),
+                                    [
+                                        Int(
+                                            4,
+                                        ),
+                                        Call(
+                                            Identifier(
+                                                [
+                                                    "add",
+                                                ],
+                                            ),
+                                            [
+                                                Int(
+                                                    9,
+                                                ),
+                                                Int(
+                                                    3,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            },
+                            Expression(
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "console",
+                                            ],
+                                        ),
+                                        "log",
+                                    ),
+                                    [
+                                        Call(
+                                            Identifier(
+                                                [
+                                                    "foo",
+                                                    "id",
+                                                ],
+                                            ),
+                                            [
+                                                Identifier(
+                                                    [
+                                                        "sum",
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            ),
+                        ],
+                        Tuple(
+                            [],
+                        ),
+                    ),
+                },
+            ],
+            children: [],
+        },
+        Module {
+            identifier: "foo",
+            body: [],
+            children: [
+                Module {
+                    identifier: "foo",
+                    body: [
+                        FunctionDeclaration {
+                            visibility: Public,
+                            identifier: "id",
+                            parameters: [
+                                "x",
+                            ],
+                            body: Identifier(
+                                [
+                                    "x",
+                                ],
+                            ),
+                        },
+                    ],
+                    children: [],
+                },
+            ],
+        },
+    ],
+}

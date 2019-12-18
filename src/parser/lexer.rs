@@ -9,6 +9,7 @@ pub struct Token {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
+    Assign,
     Dot,
     DotDot,
     Function,
@@ -73,7 +74,7 @@ const TOKENS: [(&'static str, TokenKind); 12] = [
     ("else", TokenKind::Else),
     ("let", TokenKind::Let),
     ("mut", TokenKind::Mut),
-    ("func", TokenKind::Function),
+    ("fn", TokenKind::Function),
     ("type", TokenKind::Type),
     ("pub", TokenKind::Public),
     ("import", TokenKind::Import),
@@ -190,6 +191,9 @@ impl<'a> Lexer<'a> {
         let loc = (self.loc.0 - 1, self.loc.1);
         while let Some(ch) = self.next_char() {
             match ch {
+                '$' => {
+                    buf.push_str("\\$");
+                }
                 '\\' => {
                     self.next_char().map(|ch| buf.push(ch));
                 }
@@ -280,7 +284,7 @@ impl<'a> Lexer<'a> {
             '%' => self.parse_double(Mod, &[('=', ModAssign)]),
             '>' => self.parse_double(GT, &[('>', RShift), ('=', GTE)]),
             '<' => self.parse_double(LT, &[('<', LShift), ('=', LTE)]),
-            ':' => self.parse_double(Colon, &[(':', DoubleColon)]),
+            ':' => self.parse_double(Colon, &[('=', Assign), (':', DoubleColon)]),
             '"' => self.parse_string().map(|(s, span)| Token {
                 kind: String(s),
                 span,

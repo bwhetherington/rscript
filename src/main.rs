@@ -1,9 +1,11 @@
 mod codegen;
 mod parser;
+// mod type_checker;
 use crate::codegen::compiler::Compiler;
 use crate::parser::ast::{Parser, Visibility};
 use crate::parser::lexer::Lexer;
-use crate::parser::resolver::parse_module;
+use crate::parser::resolver::{parse_module, Module};
+use std::error::Error;
 use std::fs;
 use std::process::Command;
 
@@ -11,6 +13,8 @@ use std::process::Command;
 
 use crate::parser::ast::BinaryOp;
 use crate::parser::ast::Expression;
+
+const js_source: &'static str = include_str!("./include.js");
 
 fn eval(expr: &Expression) -> f64 {
     use BinaryOp::*;
@@ -79,43 +83,26 @@ fn print_with_pointer(s: &str, ptr: &parser::Span) {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let file = fs::read_to_string("./rsc_src/main.rsc")?;
-    // println!("{}", file);
-    // let mut lexer = Lexer::new(&file);
-    // let tokens = lexer.tokens()?;
-    // println!("num tokens: {}", tokens.len());
-    // println!(
-    //     "tokens: {:#?}",
-    //     tokens
-    //         .into_iter()
-    //         .map(|token| token.kind)
-    //         .collect::<Vec<_>>()
-    // );
-    // let mut parser = Parser::new(lexer);
-    // println!("{:?}", parser.parse_statement()?);
-    // let module = resolve(Visibility::Public, "<main>", "./test.rsc").unwrap();
-    // println!("{:#?}", module);
-    // Ok(())
-
-    // let mut lexer = Lexer::new("<Module foo=\"bar\" bar=20>child</Module>");
-    // println!(
-    //     "{:?}",
-    //     lexer
-    //         .tokens()?
-    //         .into_iter()
-    //         .map(|token| token.kind)
-    //         .collect::<Vec<_>>()
-    // );
-
-    let module = parse_module("./rsc_src")?;
-    let mut compiler = Compiler::new("rsc_module");
+fn compile_module(module: &str) -> Result<(), Box<dyn Error>> {
+    let module = parse_ast(module)?;
+    let root = "rsc_module";
+    let mut compiler = Compiler::new(root);
     let compiled = compiler.compile_module(&module)?;
-    let program = format!(
-        "log=console.log;rsc_module={}rsc_module.main.main();",
-        compiled
-    );
+    let program = format!("{}{}={}{}.main.main();", js_source, root, compiled, root);
     fs::write("out.js", program)?;
 
+    Ok(())
+}
+
+fn parse_ast(module: &str) -> Result<Module, Box<dyn Error>> {
+    let module = parse_module(module)?;
+    let data = format!("{:#?}", module);
+    fs::write("./output.ast", &data)?;
+    Ok(module)
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // parse_ast("rsc_src")?;
+    compile_module("rsc_src")?;
     Ok(())
 }

@@ -84,7 +84,23 @@ pub enum Expression {
 
 #[derive(Debug, Clone)]
 pub enum Type {
-    Alias(String),
+    Alias {
+        alias: String,
+        type_arguments: Vec<String>,
+    },
+    Tuple {
+        types: Vec<Type>,
+    },
+    Interface {
+        statements: Vec<InterfaceStatement>,
+    },
+    Enum {
+        variants: Vec<EnumVariant>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum EnumVariant {
     Tuple(Vec<Type>),
     Interface(Vec<InterfaceStatement>),
 }
@@ -129,7 +145,7 @@ pub enum Statement {
     Assignment {
         visibility: Visibility,
         mutable: bool,
-        parameter: InferParameter,
+        parameter: String,
         value: Expression,
     },
     Reassignment {
@@ -139,14 +155,14 @@ pub enum Statement {
     FunctionDeclaration {
         visibility: Visibility,
         identifier: String,
-        parameters: Vec<Parameter>,
-        type_annotation: Option<TypeAnnotation>,
+        parameters: Vec<String>,
         body: Expression,
     },
     TypeAlias {
         visibility: Visibility,
         identifier: String,
         concrete_type: Type,
+        type_parameters: Vec<InferParameter>,
     },
 }
 
@@ -160,6 +176,7 @@ pub enum ParseError {
     LexError(LexError),
     EOF,
     Static(&'static str),
+    Custom(String),
 }
 
 impl error::Error for ParseError {}
@@ -171,6 +188,7 @@ impl fmt::Display for ParseError {
             ParseError::LexError(e) => write!(formatter, "{}", e),
             ParseError::EOF => write!(formatter, "EOF"),
             ParseError::Static(s) => write!(formatter, "{}", s),
+            ParseError::Custom(s) => write!(formatter, "{}", s),
         }
     }
 }
@@ -231,6 +249,70 @@ struct BlockData {
 }
 
 type Identifier = Vec<String>;
+
+enum CurryState {
+    Curry,
+    NoCurry,
+}
+
+impl CurryState {
+    fn is_curried(&self) -> bool {
+        match self {
+            CurryState::Curry => true,
+            CurryState::NoCurry => false,
+        }
+    }
+}
+
+fn transform_curry_function(call: Expression) -> Expression {
+    match call {
+        Expression::Call(func, args) => {
+            let curry_states: Vec<_> = args
+                .iter()
+                .map(|arg| match arg {
+                    // Check if any identifiers are `_`
+                    Expression::Identifier(path) => match &path[..] {
+                        [value] if value == "_" => CurryState::Curry,
+                        _ => CurryState::NoCurry,
+                    },
+                    _ => CurryState::NoCurry,
+                })
+                .collect();
+
+            // Check if we curry anything
+            let any_curried = curry_states.iter().any(|state| state.is_curried());
+            if any_curried {
+                // Create the parameters for the lambda
+                let mut params = Vec::new();
+                let mut passed_args = Vec::new();
+
+                let iter = args.into_iter().enumerate().zip(curry_states.iter());
+                for ((index, arg), state) in iter {
+                    if state.is_curried() {
+                        let identifier = format!("__arg_{}", index);
+                        let param = InferParameter {
+                            identifier: identifier.clone(),
+                            type_annotation: None,
+                        };
+                        params.push(param);
+                        let passed_arg = Expression::Identifier(vec![identifier]);
+                        passed_args.push(passed_arg);
+                    } else {
+                        passed_args.push(arg);
+                    }
+                }
+
+                let call = Expression::Call(func, passed_args);
+                let lambda = Expression::Lambda(params, Box::new(call));
+
+                lambda
+            } else {
+                Expression::Call(func, args)
+            }
+        }
+        other => other,
+    }
+}
 
 impl<I: TokenIter> Parser<I> {
     pub fn new(lexer: I) -> Parser<I> {
@@ -351,14 +433,18 @@ impl<I: TokenIter> Parser<I> {
             match tok.kind {
                 TokenKind::Dot => {
                     let member = self.parse_identifier()?;
-                    Ok(Expression::Member(Box::new(base_expr), member))
+                    let next_base = Expression::Member(Box::new(base_expr), member);
+                    self.parse_expr_internal(next_base)
                 }
                 TokenKind::OpenParen => {
                     let params = self.parse_comma_separated(
                         |parser| parser.parse_expr(),
                         TokenKind::CloseParen,
                     )?;
-                    let next_base = Expression::Call(Box::new(base_expr), params);
+                    let next_base = {
+                        let first_call = Expression::Call(Box::new(base_expr), params);
+                        transform_curry_function(first_call)
+                    };
                     self.parse_expr_internal(next_base)
                 }
                 TokenKind::OpenBracket => {
@@ -536,19 +622,18 @@ impl<I: TokenIter> Parser<I> {
                     Box::new(else_expr),
                 ))
             }
-            TokenKind::Or => {
-                println!("Begin lambda");
-                self.parse_lambda()
-            }
+            TokenKind::Or => self.parse_lambda(),
             TokenKind::DoubleOr => {
-                println!("Begin lambda (no params)");
                 let params = Vec::new();
                 let body = self.parse_expr()?;
                 Ok(Expression::Lambda(params, Box::new(body)))
             }
             _ => {
                 println!("{:?}", token);
-                Err(ParseError::Static("unexpected token"))
+                Err(ParseError::Custom(format!(
+                    "unexpected token: {:?}",
+                    token.kind
+                )))
             }
         }
     }
@@ -560,7 +645,10 @@ impl<I: TokenIter> Parser<I> {
             // TODO give better error
             _ => {
                 println!("{:?}", token);
-                Err(ParseError::Static("expected token"))
+                Err(ParseError::Custom(format!(
+                    "expected token {:?}, found {:?}",
+                    token_kind, token.kind
+                )))
             }
         }
     }
@@ -571,7 +659,10 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::Identifier(s) => Ok(s),
             _ => {
                 println!("warning: {:?}", token);
-                Err(ParseError::Static("expected identifier"))
+                Err(ParseError::Custom(format!(
+                    "unexpected token: {:?}",
+                    token.kind
+                )))
             }
         }
     }
@@ -587,14 +678,52 @@ impl<I: TokenIter> Parser<I> {
         }
     }
 
+    fn parse_type_parameters(&mut self) -> ParseResult<Vec<InferParameter>> {
+        let token = self.next_token()?;
+        match token {
+            Some(token) => match token.kind {
+                TokenKind::LT => self
+                    .parse_comma_separated(|parser| parser.parse_infer_parameter(), TokenKind::GT),
+                _ => {
+                    self.unread(token);
+                    Ok(Vec::new())
+                }
+            },
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    fn parse_type_arguments(&mut self) -> ParseResult<Vec<String>> {
+        let token = self.next_token()?;
+        match token {
+            Some(token) => match token.kind {
+                TokenKind::LT => {
+                    self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::GT)
+                }
+                _ => {
+                    self.unread(token);
+                    Ok(Vec::new())
+                }
+            },
+            _ => Ok(Vec::new()),
+        }
+    }
+
     fn parse_type(&mut self) -> ParseResult<Type> {
         let token = self.next_token_internal()?;
         match token.kind {
-            TokenKind::Identifier(ident) => Ok(Type::Alias(ident)),
+            TokenKind::Identifier(alias) => {
+                let type_arguments = self.parse_type_arguments()?;
+
+                Ok(Type::Alias {
+                    alias,
+                    type_arguments,
+                })
+            }
             TokenKind::OpenParen => {
                 let types = self
                     .parse_comma_separated(|parser| parser.parse_type(), TokenKind::CloseParen)?;
-                Ok(Type::Tuple(types))
+                Ok(Type::Tuple { types })
             }
             TokenKind::OpenBrace => self.parse_interface(),
             _ => Err(ParseError::Static("no type pattern starts with that token")),
@@ -644,40 +773,44 @@ impl<I: TokenIter> Parser<I> {
         })
     }
 
+    fn parse_function(&mut self, visibility: Visibility) -> ParseResult<Statement> {
+        let name = self.parse_identifier()?;
+
+        self.parse_token(TokenKind::OpenParen)?;
+        let parameters =
+            self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
+
+        self.parse_token(TokenKind::Equal)?;
+        let body = self.parse_expr()?;
+        Ok(Statement::FunctionDeclaration {
+            visibility,
+            identifier: name,
+            parameters,
+            body,
+        })
+    }
+
     fn parse_statement_visibility(&mut self, visibility: Visibility) -> ParseResult<Statement> {
         let token = self.next_token_internal()?;
         match token.kind {
             TokenKind::Type => {
                 let name = self.parse_identifier()?;
+
+                let type_parameters = self.parse_type_parameters()?;
+
                 self.parse_token(TokenKind::Equal)?;
                 let ty = self.parse_type()?;
                 Ok(Statement::TypeAlias {
                     visibility,
                     identifier: name,
                     concrete_type: ty,
+                    type_parameters,
                 })
             }
-            TokenKind::Function => {
-                let name = self.parse_identifier()?;
-                self.parse_token(TokenKind::OpenParen)?;
-                let params = self.parse_comma_separated(
-                    |parser| parser.parse_parameter(),
-                    TokenKind::CloseParen,
-                )?;
-                let infer_annotation = self.parse_optional_type_annotation()?;
-                self.parse_token(TokenKind::Equal)?;
-                let body = self.parse_expr()?;
-                Ok(Statement::FunctionDeclaration {
-                    visibility,
-                    identifier: name,
-                    parameters: params,
-                    type_annotation: infer_annotation,
-                    body,
-                })
-            }
+            TokenKind::Function => self.parse_function(visibility),
             TokenKind::Let => {
                 let is_mut = self.parse_mutable()?;
-                let ident = self.parse_infer_parameter()?;
+                let ident = self.parse_identifier()?;
                 self.parse_token(TokenKind::Equal)?;
                 let body = self.parse_expr()?;
                 Ok(Statement::Assignment {
@@ -824,7 +957,7 @@ impl<I: TokenIter> Parser<I> {
             }
         }
 
-        Ok(Type::Interface(statements))
+        Ok(Type::Interface { statements })
     }
 
     pub fn parse_statements(&mut self) -> ParseResult<Vec<Statement>> {
