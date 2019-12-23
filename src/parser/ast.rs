@@ -77,9 +77,10 @@ pub enum Expression {
     Tuple(Vec<Expression>),
     List(Vec<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
-    Lambda(Vec<InferParameter>, Box<Expression>),
+    Lambda(Vec<String>, Box<Expression>),
     Xml(XmlNode),
     Member(Box<Expression>, String),
+    None,
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +142,12 @@ pub enum Statement {
         path: Vec<String>,
         alias: String,
     },
+    ClassDeclaration {
+        visibility: Visibility,
+        identifier: String,
+        parent: Option<Identifier>,
+        body: Vec<Statement>,
+    },
     Expression(Expression),
     Assignment {
         visibility: Visibility,
@@ -164,6 +171,27 @@ pub enum Statement {
         concrete_type: Type,
         type_parameters: Vec<InferParameter>,
     },
+    Loop {
+        body: Vec<Statement>,
+    },
+    While {
+        condition: Expression,
+        body: Vec<Statement>,
+    },
+    Break,
+}
+
+impl Statement {
+    pub fn is_top_level(&self) -> bool {
+        use Statement::*;
+        match self {
+            TypeAlias { .. }
+            | FunctionDeclaration { .. }
+            | ClassDeclaration { .. }
+            | Import { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 pub struct Parser<I: TokenIter> {
@@ -290,11 +318,7 @@ fn transform_curry_function(call: Expression) -> Expression {
                 for ((index, arg), state) in iter {
                     if state.is_curried() {
                         let identifier = format!("__arg_{}", index);
-                        let param = InferParameter {
-                            identifier: identifier.clone(),
-                            type_annotation: None,
-                        };
-                        params.push(param);
+                        params.push(identifier.clone());
                         let passed_arg = Expression::Identifier(vec![identifier]);
                         passed_args.push(passed_arg);
                     } else {
@@ -326,7 +350,7 @@ impl<I: TokenIter> Parser<I> {
         self.stack.push(token);
     }
 
-    fn next_token(&mut self) -> ParseResult<Option<Token>> {
+    pub fn next_token(&mut self) -> ParseResult<Option<Token>> {
         let token = self
             .stack
             .pop()
@@ -534,7 +558,7 @@ impl<I: TokenIter> Parser<I> {
 
     fn parse_lambda(&mut self) -> ParseResult<Expression> {
         let params =
-            self.parse_comma_separated(|parser| parser.parse_infer_parameter(), TokenKind::Or)?;
+            self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::Or)?;
         let body = self.parse_expr()?;
         Ok(Expression::Lambda(params, Box::new(body)))
     }
@@ -542,6 +566,7 @@ impl<I: TokenIter> Parser<I> {
     fn parse_primary_expr(&mut self) -> ParseResult<Expression> {
         let token = self.next_token_internal()?;
         match token.kind {
+            TokenKind::None => Ok(Expression::None),
             TokenKind::Int(i) => Ok(Expression::Int(i)),
             TokenKind::Float(f) => Ok(Expression::Float(f)),
             TokenKind::Boolean(b) => Ok(Expression::Boolean(b)),
@@ -793,6 +818,45 @@ impl<I: TokenIter> Parser<I> {
     fn parse_statement_visibility(&mut self, visibility: Visibility) -> ParseResult<Statement> {
         let token = self.next_token_internal()?;
         match token.kind {
+            TokenKind::Class => {
+                let identifier = self.parse_identifier()?;
+                let tok = self.next_token_internal()?;
+                let parent = match tok.kind {
+                    TokenKind::Colon => {
+                        // Get parent class
+                        Some(self.parse_full_identifier()?)
+                    }
+                    _ => {
+                        self.unread(tok);
+                        None
+                    }
+                };
+
+                let mut statements = Vec::new();
+
+                self.parse_token(TokenKind::OpenBrace)?;
+
+                while let Some(tok) = self.next_token()? {
+                    match tok.kind {
+                        TokenKind::CloseBrace => {
+                            break;
+                        }
+                        _ => {
+                            self.unread(tok);
+                            let statement = self.parse_statement()?;
+                            self.parse_token(TokenKind::Semicolon)?;
+                            statements.push(statement);
+                        }
+                    }
+                }
+
+                Ok(Statement::ClassDeclaration {
+                    visibility,
+                    identifier,
+                    parent,
+                    body: statements,
+                })
+            }
             TokenKind::Type => {
                 let name = self.parse_identifier()?;
 
@@ -828,6 +892,7 @@ impl<I: TokenIter> Parser<I> {
                     if let TokenKind::As = token.kind {
                         self.parse_identifier()?
                     } else {
+                        self.unread(token);
                         default_alias.to_string()
                     }
                 } else {
@@ -836,6 +901,69 @@ impl<I: TokenIter> Parser<I> {
 
                 Ok(Statement::Import { path, alias })
             }
+            // Parse break;
+            TokenKind::Break => Ok(Statement::Break),
+
+            TokenKind::Loop => {
+                self.parse_token(TokenKind::OpenBrace)?;
+
+                let mut statements = Vec::new();
+                let mut finished = false;
+
+                while let Some(tok) = self.next_token()? {
+                    match tok.kind {
+                        TokenKind::CloseBrace => {
+                            finished = true;
+                            break;
+                        }
+                        _ => {
+                            self.unread(tok);
+                            let statement = self.parse_statement()?;
+                            self.parse_token(TokenKind::Semicolon)?;
+                            statements.push(statement);
+                        }
+                    }
+                }
+
+                if finished {
+                    Ok(Statement::Loop { body: statements })
+                } else {
+                    Err(ParseError::EOF)
+                }
+            }
+
+            TokenKind::While => {
+                let condition = self.parse_expr()?;
+                self.parse_token(TokenKind::OpenBrace)?;
+
+                let mut statements = Vec::new();
+                let mut finished = false;
+
+                while let Some(tok) = self.next_token()? {
+                    match tok.kind {
+                        TokenKind::CloseBrace => {
+                            finished = true;
+                            break;
+                        }
+                        _ => {
+                            self.unread(tok);
+                            let statement = self.parse_statement()?;
+                            self.parse_token(TokenKind::Semicolon)?;
+                            statements.push(statement);
+                        }
+                    }
+                }
+
+                if finished {
+                    Ok(Statement::While {
+                        condition,
+                        body: statements,
+                    })
+                } else {
+                    Err(ParseError::EOF)
+                }
+            }
+
             // Parse expression or assignment
             _ => {
                 self.unread(token);
@@ -869,6 +997,17 @@ impl<I: TokenIter> Parser<I> {
             }
         };
         self.parse_statement_visibility(visibility)
+    }
+
+    fn parse_class(&mut self) -> ParseResult<Vec<Statement>> {
+        let mut statements = Vec::new();
+
+        while let Some(tok) = self.next_token()? {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+        }
+
+        Ok(statements)
     }
 
     // { statement ; statement ; [expression]? }

@@ -5,34 +5,6 @@ Module {
         Module {
             identifier: "main",
             body: [
-                Import {
-                    path: [
-                        "foo",
-                        "foo",
-                    ],
-                    alias: "bar",
-                },
-                FunctionDeclaration {
-                    visibility: Private,
-                    identifier: "add",
-                    parameters: [
-                        "x",
-                        "y",
-                    ],
-                    body: Binary(
-                        Plus,
-                        Identifier(
-                            [
-                                "x",
-                            ],
-                        ),
-                        Identifier(
-                            [
-                                "y",
-                            ],
-                        ),
-                    ),
-                },
                 FunctionDeclaration {
                     visibility: Public,
                     identifier: "main",
@@ -42,59 +14,22 @@ Module {
                             Assignment {
                                 visibility: Private,
                                 mutable: false,
-                                parameter: "sum",
-                                value: Call(
-                                    Identifier(
-                                        [
-                                            "add",
-                                        ],
-                                    ),
-                                    [
-                                        Int(
-                                            4,
-                                        ),
-                                        Call(
-                                            Identifier(
-                                                [
-                                                    "add",
-                                                ],
-                                            ),
-                                            [
-                                                Int(
-                                                    9,
-                                                ),
-                                                Int(
-                                                    3,
-                                                ),
-                                            ],
-                                        ),
-                                    ],
+                                parameter: "x",
+                                value: Int(
+                                    10,
                                 ),
                             },
                             Expression(
                                 Call(
-                                    Member(
-                                        Identifier(
-                                            [
-                                                "console",
-                                            ],
-                                        ),
-                                        "log",
+                                    Identifier(
+                                        [
+                                            "print",
+                                        ],
                                     ),
                                     [
-                                        Call(
-                                            Identifier(
-                                                [
-                                                    "foo",
-                                                    "id",
-                                                ],
-                                            ),
+                                        Identifier(
                                             [
-                                                Identifier(
-                                                    [
-                                                        "sum",
-                                                    ],
-                                                ),
+                                                "x",
                                             ],
                                         ),
                                     ],
@@ -106,6 +41,16 @@ Module {
                         ),
                     ),
                 },
+                Expression(
+                    Call(
+                        Identifier(
+                            [
+                                "main",
+                            ],
+                        ),
+                        [],
+                    ),
+                ),
             ],
             children: [],
         },

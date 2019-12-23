@@ -1,6 +1,10 @@
-pub mod ast;
-pub mod lexer;
-pub mod resolver;
+mod ast;
+mod lexer;
+mod resolver;
+
+pub use ast::*;
+pub use lexer::*;
+pub use resolver::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {

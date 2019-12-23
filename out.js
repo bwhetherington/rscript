@@ -8,7 +8,7 @@ rsc_module = (new(function() {
         const add = (x, y) => (x + y);
         const main = () => (() => {
             const sum = (add)(4, (add)(9, 3));
-            ((console["log"]))((rsc_module.foo.id)(sum));
+            ((console["log"]))((rsc_module.baz.id)(sum));
             return undefined;
         })();
         this.main = main;

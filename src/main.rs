@@ -1,37 +1,20 @@
-mod codegen;
+#![allow(unused)]
+
+// mod codegen;
+mod engine;
 mod parser;
+
 // mod type_checker;
-use crate::codegen::compiler::Compiler;
-use crate::parser::ast::{Parser, Visibility};
-use crate::parser::lexer::Lexer;
-use crate::parser::resolver::{parse_module, Module};
+// use crate::codegen::compiler::Compiler;
+use crate::{
+    engine::{Engine, Value},
+    parser::{parse_module, BinaryOp, Expression, Lexer, Module, Parser, Visibility},
+};
 use std::error::Error;
 use std::fs;
 use std::process::Command;
 
-// mod type_checker;
-
-use crate::parser::ast::BinaryOp;
-use crate::parser::ast::Expression;
-
-const js_source: &'static str = include_str!("./include.js");
-
-fn eval(expr: &Expression) -> f64 {
-    use BinaryOp::*;
-    use Expression::*;
-    match expr {
-        Int(i) => *i as f64,
-        Float(f) => *f,
-        Binary(op, a, b) => match op {
-            Plus => eval(a.as_ref()) + eval(b.as_ref()),
-            Minus => eval(a.as_ref()) - eval(b.as_ref()),
-            Times => eval(a.as_ref()) * eval(b.as_ref()),
-            Divide => eval(a.as_ref()) / eval(b.as_ref()),
-            _ => unimplemented!(),
-        },
-        _ => unimplemented!(),
-    }
-}
+// const js_source: &'static str = include_str!("./include.js");
 
 fn trim_margin(s: &str) -> String {
     let margin = s
@@ -83,17 +66,18 @@ fn print_with_pointer(s: &str, ptr: &parser::Span) {
     }
 }
 
-fn compile_module(module: &str) -> Result<(), Box<dyn Error>> {
-    let module = parse_ast(module)?;
-    let root = "rsc_module";
-    let mut compiler = Compiler::new(root);
-    let compiled = compiler.compile_module(&module)?;
-    let program = format!("{}{}={}{}.main.main();", js_source, root, compiled, root);
-    fs::write("out.js", program)?;
+// fn compile_module(module: &str) -> Result<(), Box<dyn Error>> {
+//     let module = parse_ast(module)?;
+//     let root = "rsc_module";
+//     let mut compiler = Compiler::new(root);
+//     let compiled = compiler.compile_module(&module)?;
+//     let program = format!("{}{}={}{}.main.main();", js_source, root, compiled, root);
+//     fs::write("out.js", program)?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
+#[allow(unused)]
 fn parse_ast(module: &str) -> Result<Module, Box<dyn Error>> {
     let module = parse_module(module)?;
     let data = format!("{:#?}", module);
@@ -102,7 +86,14 @@ fn parse_ast(module: &str) -> Result<Module, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // parse_ast("rsc_src")?;
-    compile_module("rsc_src")?;
+    let mut engine = Engine::new();
+    engine.init();
+
+    let module = parse_module("rsc_src")?;
+    engine.load_module(&module, true).unwrap();
+
+    // Find the main method
+    engine.run_main().unwrap();
+
     Ok(())
 }

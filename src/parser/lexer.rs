@@ -64,11 +64,17 @@ pub enum TokenKind {
     Public,
     Import,
     As,
+    Class,
+    While,
+    Loop,
+    Break,
+    None,
 }
 
-const TOKENS: [(&'static str, TokenKind); 12] = [
-    ("true", TokenKind::Boolean(true)),
-    ("false", TokenKind::Boolean(false)),
+const TOKENS: [(&'static str, TokenKind); 17] = [
+    ("True", TokenKind::Boolean(true)),
+    ("False", TokenKind::Boolean(false)),
+    ("None", TokenKind::None),
     ("if", TokenKind::If),
     ("then", TokenKind::Then),
     ("else", TokenKind::Else),
@@ -79,6 +85,10 @@ const TOKENS: [(&'static str, TokenKind); 12] = [
     ("pub", TokenKind::Public),
     ("import", TokenKind::Import),
     ("as", TokenKind::As),
+    ("class", TokenKind::Class),
+    ("while", TokenKind::While),
+    ("loop", TokenKind::Loop),
+    ("break", TokenKind::Break),
 ];
 
 fn is_delimiter(ch: char) -> bool {
@@ -92,14 +102,14 @@ fn is_delimiter(ch: char) -> bool {
 
 fn is_identifier_char_first(ch: char) -> bool {
     match ch {
-        '0'...'9' => false,
+        '0'..='9' => false,
         ch => is_identifier_char(ch),
     }
 }
 
 fn is_identifier_char(ch: char) -> bool {
     match ch {
-        'a'...'z' | 'A'...'Z' | '_' | '0'...'9' => true,
+        'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true,
         _ => false,
     }
 }
