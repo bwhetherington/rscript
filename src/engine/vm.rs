@@ -1,8 +1,8 @@
 use crate::parser::*;
 use std::cell::RefCell;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, error::Error, rc::Rc};
 
-fn is_usize(num: f64) -> bool {
+pub fn is_usize(num: f64) -> bool {
     (num as usize as f64) == num
 }
 
@@ -117,6 +117,14 @@ impl EvalError {
     }
 }
 
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for EvalError {}
+
 type EvalResult<T> = Result<T, EvalError>;
 
 impl Engine {
@@ -131,31 +139,93 @@ impl Engine {
     }
 
     fn init_types(&mut self) {
+        let mut obj_proto = Object::new();
+        obj_proto.define_method("to_string", |this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => Ok(Value::String(obj.borrow().to_string().into())),
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
+        obj_proto.define_method("get", |this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (parent, [Value::String(s)]) => Object::get_field(parent, s),
+                (first, [second]) => Err(EvalError::type_mismatch(
+                    "(Object, Number)",
+                    format!("({}, {})", first.type_of(), second.type_of()),
+                )),
+                (_, xs) => Err(EvalError::arity_mismatch(1, xs.len())),
+            }
+        });
+
+        obj_proto.define_method("set", |this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [Value::String(s), item]) => {
+                    let mut this = this.borrow_mut();
+                    this.set(s.as_ref(), item.clone());
+                    Ok(Value::None)
+                }
+                (first, [second, _]) => Err(EvalError::type_mismatch(
+                    "(Object, Number)",
+                    format!("({}, {})", first.type_of(), second.type_of()),
+                )),
+                (_, xs) => Err(EvalError::arity_mismatch(2, xs.len())),
+            }
+        });
+
+        let obj_proto = ptr(obj_proto);
+
+        self.env.insert("Object", Value::Object(obj_proto.clone()));
+
         // Define list prototype
         let mut list_proto = Object::new();
+        list_proto.set_proto(obj_proto);
 
         // [].to_string()
         list_proto.define_method("to_string", |this, args| {
-            let this = this.ok_or_else(|| EvalError::undefined("self"))?.borrow();
-            match args.len() {
-                0 => {
-                    if let Some(val) = this.get("data") {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => {
+                    if let Some(val) = obj.borrow().get("data") {
                         Ok(Value::String(val.to_string().into()))
                     } else {
                         Err(EvalError::key_not_found("data"))
                     }
                 }
-                len => Err(EvalError::arity_mismatch(0, len)),
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
+        list_proto.define_method("len", |this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => {
+                    if let Some(val) = obj.borrow().get("data") {
+                        match val {
+                            Value::List(vec) => Ok(Value::Number(vec.borrow().len() as f64)),
+                            other => Err(EvalError::type_mismatch("List", other.type_of())),
+                        }
+                    } else {
+                        Err(EvalError::key_not_found("data"))
+                    }
+                }
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
             }
         });
 
         // [].get(i)
         list_proto.define_method("get", |this, args| {
-            let this = this.ok_or_else(|| EvalError::undefined("self"))?.borrow();
-            match args {
-                [Value::Number(n)] if is_usize(*n) => {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [Value::Number(n)]) if is_usize(*n) => {
                     let n = *n as usize;
-                    match this.get("data") {
+                    match this.borrow().get("data") {
                         Some(Value::List(vec)) => {
                             let list = vec.as_ref().borrow();
                             if n < list.len() {
@@ -168,21 +238,45 @@ impl Engine {
                         None => Err(EvalError::key_not_found("data")),
                     }
                 }
-                [other] => Err(EvalError::type_mismatch("Number", other.type_of())),
-                xs => Err(EvalError::arity_mismatch(1, xs.len())),
+                (first, [second]) => Err(EvalError::type_mismatch(
+                    "(Object, Number)",
+                    format!("({}, {})", first.type_of(), second.type_of()),
+                )),
+                (_, xs) => Err(EvalError::arity_mismatch(1, xs.len())),
             }
         });
 
         // [].set(i, x)
-        // list_proto.define_method("set", |this, args| {
-
-        // });
+        list_proto.define_method("set", |this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [Value::Number(n), item]) if is_usize(*n) => {
+                    let n = *n as usize;
+                    match this.borrow().get("data") {
+                        Some(Value::List(vec)) => {
+                            let mut list = vec.as_ref().borrow_mut();
+                            if n < list.len() {
+                                list[n] = item.clone();
+                            }
+                            Ok(Value::None)
+                        }
+                        Some(other) => Err(EvalError::type_mismatch("List", other.type_of())),
+                        None => Err(EvalError::key_not_found("data")),
+                    }
+                }
+                (first, [second, _]) => Err(EvalError::type_mismatch(
+                    "(Object, Number)",
+                    format!("({}, {})", first.type_of(), second.type_of()),
+                )),
+                (_, xs) => Err(EvalError::arity_mismatch(2, xs.len())),
+            }
+        });
 
         // [].push(x)
         list_proto.define_method("push", |this, args| {
-            let this = this.ok_or_else(|| EvalError::undefined("self"))?.borrow();
-            match args {
-                [value] => match this.get("data") {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [value]) => match this.borrow().get("data") {
                     Some(Value::List(vec)) => {
                         let mut list = vec.borrow_mut();
                         list.push(value.clone());
@@ -191,7 +285,8 @@ impl Engine {
                     Some(other) => Err(EvalError::type_mismatch("List", other.type_of())),
                     None => Err(EvalError::key_not_found("data")),
                 },
-                xs => Err(EvalError::arity_mismatch(1, xs.len())),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+                (_, xs) => Err(EvalError::arity_mismatch(1, xs.len())),
             }
         });
 
@@ -282,7 +377,7 @@ impl Engine {
 
     pub fn define_built_in<F>(&mut self, name: impl Into<String>, built_in: F)
     where
-        F: Fn(Option<&Ptr<Object>>, &[Value]) -> EvalResult<Value> + 'static,
+        F: Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
     {
         let built_in = Callable::BuiltIn(Rc::new(built_in));
         let func = Function {
@@ -387,6 +482,21 @@ impl Engine {
             }
             Statement::Reassignment { location, value } => {
                 match location {
+                    Expression::Member(obj, field) => match self.evaluate(obj)? {
+                        Value::Object(obj) => {
+                            let value = self.evaluate(value)?;
+                            obj.borrow_mut().set(field, value);
+                            Ok(())
+                        }
+                        other => Err(EvalError::type_mismatch("Object", other.type_of())),
+                    },
+                    Expression::Index(obj, field) => {
+                        let obj = self.evaluate(obj)?;
+                        let key = self.evaluate(field)?;
+                        let args = [key, self.evaluate(value)?];
+                        self.call_method(&obj, "set", &args);
+                        Ok(())
+                    }
                     Expression::Identifier(ident) if ident.len() == 1 => {
                         let ident = &ident[0];
                         // Look up location
@@ -395,7 +505,7 @@ impl Engine {
                             *loc = value;
                             Ok(())
                         } else {
-                            unimplemented!()
+                            Err(EvalError::undefined(ident))
                         }
                     }
                     _ => unimplemented!(),
@@ -496,6 +606,8 @@ impl Engine {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Boolean(*a >= *b)),
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
+            BinaryOp::Equal => Ok(Value::Boolean(a == b)),
+            BinaryOp::NotEqual => Ok(Value::Boolean(a != b)),
             _ => todo!(),
         }
     }
@@ -534,7 +646,8 @@ impl Engine {
                 match condition {
                     Value::Boolean(b) if b => self.evaluate(then),
                     Value::Boolean(_) => self.evaluate(otherwise),
-                    other => Err(EvalError::type_mismatch("Boolean", other.type_of())),
+                    Value::None => self.evaluate(otherwise),
+                    other => self.evaluate(then),
                 }
             }
             Expression::Lambda(params, body) => Ok(Value::Function(Function {
@@ -562,23 +675,7 @@ impl Engine {
             }
             Expression::Member(parent, key) => {
                 let parent = self.evaluate(parent)?;
-                match parent {
-                    Value::Object(obj) => {
-                        let mut field = obj
-                            .borrow()
-                            .get(key)
-                            .ok_or_else(|| EvalError::KeyNotFoundError(key.clone()))?;
-                        match &mut field {
-                            Value::Function(f) => {
-                                // Bind self if method
-                                f.self_param = Some(obj);
-                            }
-                            _ => {}
-                        }
-                        Ok(field)
-                    }
-                    _ => unimplemented!(),
-                }
+                Object::get_field(&parent, key)
             }
             Expression::Identifier(ident) => {
                 // Check if we have a path or simple identifier
@@ -603,6 +700,11 @@ impl Engine {
             Expression::Float(n) => Ok(Value::Number(*n)),
             Expression::None => Ok(Value::None),
             Expression::Tuple(_) => Ok(Value::None),
+            Expression::Index(parent, field) => {
+                let obj = self.evaluate(parent)?;
+                let args = [self.evaluate(field)?];
+                self.call_method(&obj, "get", &args)
+            }
             other => {
                 println!("unimplemented: {:?}", other);
                 unimplemented!()
@@ -612,7 +714,7 @@ impl Engine {
 
     fn call(&mut self, f: &Function, args: &[Value]) -> EvalResult<Value> {
         match &f.callable {
-            Callable::BuiltIn(func) => func(f.self_param.as_ref(), args),
+            Callable::BuiltIn(func) => func(f.self_param.clone(), args),
             Callable::RFunction(params, body) => {
                 // Capture environment
                 self.env.descend();
@@ -625,6 +727,13 @@ impl Engine {
                 for (key, val) in params.iter().zip(args) {
                     self.env.insert(key, val.clone());
                 }
+
+                // Insert `self`
+                let self_param = match &f.self_param {
+                    Some(val) => val.as_ref().clone(),
+                    None => Value::None,
+                };
+                self.env.insert("self", self_param);
 
                 // Evaluate function
                 let res = self.evaluate(body);
@@ -644,20 +753,33 @@ impl Engine {
             other => Ok(other.clone()),
         }
     }
+
+    fn call_method(
+        &mut self,
+        parent: &Value,
+        method: impl AsRef<str>,
+        args: &[Value],
+    ) -> EvalResult<Value> {
+        let method = Object::get_field(parent, method)?;
+        match method {
+            Value::Function(f) => self.call(&f, args),
+            other => Err(EvalError::type_mismatch("Function", other.type_of())),
+        }
+    }
 }
 
 type Str = Rc<str>;
 
 #[derive(Clone)]
 pub enum Callable {
-    BuiltIn(Rc<dyn Fn(Option<&Ptr<Object>>, &[Value]) -> EvalResult<Value>>),
+    BuiltIn(Rc<dyn Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value>>),
     RFunction(Rc<Vec<String>>, Expression),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     capture: Rc<Frame>,
-    self_param: Option<Ptr<Object>>,
+    self_param: Option<Rc<Value>>,
     callable: Callable,
 }
 
@@ -681,6 +803,30 @@ pub enum Value {
     None,
 }
 
+fn ptr_eq<T>(a: &Ptr<T>, b: &Ptr<T>) -> bool {
+    let a = a.as_ref() as *const _;
+    let b = b.as_ref() as *const _;
+    a == b
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Value) -> bool {
+        use Value::*;
+        match (self, other) {
+            (Number(a), Number(b)) => a == b,
+            (Boolean(a), Boolean(b)) => a == b,
+            (String(a), String(b)) => a == b,
+            (Symbol(a), Symbol(b)) => a == b,
+            (Object(a), Object(b)) => ptr_eq(a, b),
+            (List(a), List(b)) => ptr_eq(a, b),
+            (Function(_), Function(_)) => false,
+            (Link(_), Link(_)) => false,
+            (None, None) => true,
+            (_, _) => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Object {
     proto: Option<Ptr<Object>>,
@@ -699,6 +845,23 @@ impl Object {
         self.proto = Some(proto);
     }
 
+    pub fn get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Value> {
+        match parent {
+            Value::Object(obj) => obj
+                .borrow()
+                .get(key.as_ref())
+                .ok_or_else(|| EvalError::key_not_found(key.as_ref()))
+                .map(|field| match field {
+                    Value::Function(mut f) => {
+                        f.self_param = Some(Rc::new(parent.clone()));
+                        Value::Function(f)
+                    }
+                    other => other,
+                }),
+            other => Err(EvalError::type_mismatch("Object", other.type_of())),
+        }
+    }
+
     pub fn get(&self, key: impl AsRef<str>) -> Option<Value> {
         self.fields.get(key.as_ref()).cloned().or_else(|| {
             self.proto
@@ -713,7 +876,7 @@ impl Object {
 
     pub fn define_method<F>(&mut self, name: impl Into<String>, method: F)
     where
-        F: Fn(Option<&Ptr<Object>>, &[Value]) -> EvalResult<Value> + 'static,
+        F: Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
     {
         let function = Function {
             capture: Rc::new(HashMap::new()),
@@ -743,7 +906,7 @@ impl fmt::Display for Object {
 
 use std::fmt;
 
-impl fmt::Debug for Function {
+impl fmt::Debug for Callable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<Function>")
     }
@@ -753,7 +916,8 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Value::Number(n) => write!(f, "{}", n),
-            Value::Boolean(b) => write!(f, "{}", b),
+            Value::Boolean(b) if *b => write!(f, "True"),
+            Value::Boolean(_) => write!(f, "False"),
             Value::String(s) => write!(f, "{}", s),
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Object(obj) => write!(f, "{}", obj.as_ref().borrow()),

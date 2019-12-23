@@ -8,7 +8,7 @@ mod parser;
 // use crate::codegen::compiler::Compiler;
 use crate::{
     engine::{Engine, Value},
-    parser::{parse_module, BinaryOp, Expression, Lexer, Module, Parser, Visibility},
+    parser::{parse_module, BinaryOp, Expression, Lexer, Module, Parser, Statement, Visibility},
 };
 use std::error::Error;
 use std::fs;
@@ -85,6 +85,44 @@ fn parse_ast(module: &str) -> Result<Module, Box<dyn Error>> {
     Ok(module)
 }
 
+use std::io::{self, prelude::*};
+
+struct Console {
+    line: String,
+}
+
+impl Console {
+    pub fn new() -> Console {
+        Console {
+            line: String::new(),
+        }
+    }
+
+    pub fn prompt<'a, 'b>(&'a mut self, prompt: &'b str) -> io::Result<&'a str> {
+        self.line.clear();
+        print!("{}", prompt);
+        io::stdout().flush()?;
+        io::stdin().read_line(&mut self.line)?;
+        self.line = self.line.trim().to_string();
+        Ok(&self.line)
+    }
+}
+
+fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error>> {
+    let input = format!("{};", input);
+    let lexer = Lexer::new(&input);
+    let mut parser = Parser::new(lexer);
+
+    let statement = parser.parse_statement()?;
+    match statement {
+        Statement::Expression(expr) => Ok(engine.evaluate(&expr)?),
+        other => {
+            engine.execute(&other)?;
+            Ok(Value::None)
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = Engine::new();
     engine.init();
@@ -93,7 +131,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     engine.load_module(&module, true).unwrap();
 
     // Find the main method
-    engine.run_main().unwrap();
+    engine.run_main()?;
+    // match engine.run_main()? {
+    //     Value::Number(n) if (n as i32 as f64) == n => {
+    //         let n = n as i32;
+    //         // std::process::exit(n);
+    //     }
+    //     other => std::process::exit(-1),
+    // }
+
+    // Ok(())
+
+    let mut console = Console::new();
+    loop {
+        let input = console.prompt("> ")?;
+
+        if input == "exit" {
+            break;
+        }
+
+        match handle_input(&mut engine, input) {
+            Ok(value) if value.type_of() != "None" => println!("{}", value),
+            Ok(_) => (),
+            Err(why) => println!("error: {}", why),
+        }
+    }
 
     Ok(())
 }
