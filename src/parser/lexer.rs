@@ -226,8 +226,13 @@ impl<'a> Lexer<'a> {
     fn parse_atom(&mut self) -> (String, Span) {
         let mut buf = String::new();
         let loc = self.loc;
+        let mut prev = None;
+        let mut is_numeric = true;
         while let Some(ch) = self.next_char() {
+            // Check if everything thus far has been numeric
+            is_numeric = is_numeric && prev.map(|ch: char| ch.is_numeric()).unwrap_or(true);
             match ch {
+                ch if is_numeric && ch == '.' => buf.push(ch),
                 ch if ch.is_whitespace() || is_delimiter(ch) => {
                     self.unread(ch);
                     let len = buf.len();
@@ -235,6 +240,7 @@ impl<'a> Lexer<'a> {
                 }
                 ch => buf.push(ch),
             }
+            prev = Some(ch);
         }
         let len = buf.len();
         (buf, Span::new(loc.0, loc.1, len))
@@ -302,15 +308,15 @@ impl<'a> Lexer<'a> {
             other => {
                 self.unread(other);
                 let (atom, span) = self.parse_atom();
-                if let Ok(int) = atom.parse::<i32>() {
-                    return Ok(Token {
-                        kind: Int(int),
-                        span,
-                    });
-                }
                 if let Ok(num) = atom.parse::<f64>() {
                     return Ok(Token {
                         kind: Float(num),
+                        span,
+                    });
+                }
+                if let Ok(int) = atom.parse::<i32>() {
+                    return Ok(Token {
+                        kind: Int(int),
                         span,
                     });
                 }

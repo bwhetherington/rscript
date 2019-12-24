@@ -140,7 +140,11 @@ impl Engine {
 
     fn init_types(&mut self) {
         let mut obj_proto = Object::new();
-        obj_proto.define_method("to_string", |this, args| {
+        // obj_proto.define_method("constructor", |this, args| {
+
+        // });
+
+        obj_proto.define_method("to_string", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args.len()) {
                 (Value::Object(obj), 0) => Ok(Value::String(obj.borrow().to_string().into())),
@@ -149,7 +153,7 @@ impl Engine {
             }
         });
 
-        obj_proto.define_method("get", |this, args| {
+        obj_proto.define_method("get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (parent, [Value::String(s)]) => Object::get_field(parent, s),
@@ -161,7 +165,7 @@ impl Engine {
             }
         });
 
-        obj_proto.define_method("set", |this, args| {
+        obj_proto.define_method("set", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::String(s), item]) => {
@@ -185,8 +189,20 @@ impl Engine {
         let mut list_proto = Object::new();
         list_proto.set_proto(obj_proto);
 
+        list_proto.define_method("new", |_, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => {
+                    obj.borrow_mut().set("data", Value::List(ptr(Vec::new())));
+                    Ok(Value::None)
+                }
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
         // [].to_string()
-        list_proto.define_method("to_string", |this, args| {
+        list_proto.define_method("to_string", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args.len()) {
                 (Value::Object(obj), 0) => {
@@ -201,7 +217,7 @@ impl Engine {
             }
         });
 
-        list_proto.define_method("len", |this, args| {
+        list_proto.define_method("len", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args.len()) {
                 (Value::Object(obj), 0) => {
@@ -220,7 +236,7 @@ impl Engine {
         });
 
         // [].get(i)
-        list_proto.define_method("get", |this, args| {
+        list_proto.define_method("get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::Number(n)]) if is_usize(*n) => {
@@ -247,7 +263,7 @@ impl Engine {
         });
 
         // [].set(i, x)
-        list_proto.define_method("set", |this, args| {
+        list_proto.define_method("set", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::Number(n), item]) if is_usize(*n) => {
@@ -273,7 +289,7 @@ impl Engine {
         });
 
         // [].push(x)
-        list_proto.define_method("push", |this, args| {
+        list_proto.define_method("push", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [value]) => match this.borrow().get("data") {
@@ -301,15 +317,53 @@ impl Engine {
         }
     }
 
+    fn define_unary_fn(&mut self, name: impl Into<String>, f: impl Fn(f64) -> f64 + 'static) {
+        self.define_built_in(name, move |_, _, args| match args {
+            [Value::Number(n)] => Ok(Value::Number(f(*n))),
+            [x] => Err(EvalError::type_mismatch("Number", x.type_of())),
+            xs => Err(EvalError::arity_mismatch(1, xs.len())),
+        });
+    }
+
+    fn define_binary_fn(&mut self, name: impl Into<String>, f: impl Fn(f64, f64) -> f64 + 'static) {
+        self.define_built_in(name, move |_, _, args| match args {
+            [Value::Number(a), Value::Number(b)] => Ok(Value::Number(f(*a, *b))),
+            [x, Value::Number(_)] => Err(EvalError::type_mismatch("Number", x.type_of())),
+            [Value::Number(_), x] => Err(EvalError::type_mismatch("Number", x.type_of())),
+            xs => Err(EvalError::arity_mismatch(2, xs.len())),
+        });
+    }
+
+    fn define_math_built_ins(&mut self) {
+        self.define_unary_fn("floor", f64::floor);
+        self.define_unary_fn("ceil", f64::ceil);
+        self.define_unary_fn("sin", f64::sin);
+        self.define_unary_fn("cos", f64::cos);
+        self.define_unary_fn("tan", f64::tan);
+        self.define_unary_fn("asin", f64::asin);
+        self.define_unary_fn("acos", f64::acos);
+        self.define_unary_fn("atan", f64::atan);
+        self.define_binary_fn("atan2", f64::atan2);
+    }
+
     pub fn init(&mut self) {
-        self.define_built_in("print", |_, args| {
+        self.define_math_built_ins();
+
+        self.define_built_in("type_of", |_, _, args| match args {
+            [arg] => Ok(Value::String(arg.type_of().into())),
+            xs => Err(EvalError::arity_mismatch(1, xs.len())),
+        });
+
+        self.define_built_in("print", |engine, _, args| {
             for arg in args {
-                print!("{} ", arg);
+                engine.print_value(arg)?;
+                print!(" ");
             }
             println!();
             Ok(Value::None)
         });
-        self.define_built_in("push_list", |_, args| {
+
+        self.define_built_in("push_list", |_, _, args| {
             match args.clone() {
                 [Value::List(vec), item] => {
                     // Push to list
@@ -322,7 +376,7 @@ impl Engine {
             }
         });
 
-        self.define_built_in("get_list", |_, args| {
+        self.define_built_in("get_list", |_, _, args| {
             match args.clone() {
                 [Value::List(vec), Value::Number(n)] if is_usize(*n) => {
                     // Push to list
@@ -336,7 +390,7 @@ impl Engine {
             }
         });
 
-        self.define_built_in("set_list", |_, args| match args.clone() {
+        self.define_built_in("set_list", |_, _, args| match args.clone() {
             [Value::List(vec), Value::Number(n), value] if is_usize(*n) => {
                 // Push to list
                 let mut list = vec.borrow_mut();
@@ -352,7 +406,7 @@ impl Engine {
             other => Err(EvalError::arity_mismatch(2, other.len())),
         });
 
-        self.define_built_in("len_list", |_, args| match args {
+        self.define_built_in("len_list", |_, _, args| match args {
             [Value::List(vec)] => {
                 // Push to list
                 let list = vec.borrow();
@@ -377,7 +431,7 @@ impl Engine {
 
     pub fn define_built_in<F>(&mut self, name: impl Into<String>, built_in: F)
     where
-        F: Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
+        F: Fn(&mut Engine, Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
     {
         let built_in = Callable::BuiltIn(Rc::new(built_in));
         let func = Function {
@@ -477,7 +531,10 @@ impl Engine {
                 value,
             } => {
                 let val = self.evaluate(value)?;
-                self.env.insert(parameter, val);
+                self.env.insert(parameter, val.clone());
+                if let Visibility::Public = visibility {
+                    self.define_module_declaration(parameter, val);
+                }
                 Ok(())
             }
             Statement::Reassignment { location, value } => {
@@ -564,6 +621,19 @@ impl Engine {
         }
     }
 
+    fn evaluate_unary(&mut self, op: &UnaryOp, value: &Value) -> EvalResult<Value> {
+        match op {
+            UnaryOp::Minus => match value {
+                Value::Number(n) => Ok(Value::Number(-n)),
+                x => Err(EvalError::type_mismatch("Number", x.type_of())),
+            },
+            op => {
+                println!("{:?} is not yet supported.", op);
+                todo!()
+            }
+        }
+    }
+
     fn evaluate_binary(&mut self, op: BinaryOp, a: &Value, b: &Value) -> EvalResult<Value> {
         match op {
             BinaryOp::DoubleAnd => match (a, b) {
@@ -576,6 +646,18 @@ impl Engine {
             },
             BinaryOp::Plus => match (a, b) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a + *b)),
+                (Value::String(a), Value::String(b)) => {
+                    let result = format!("{}{}", a, b);
+                    Ok(Value::String(result.into()))
+                }
+                (Value::String(s), other) => {
+                    let result = format!("{}{}", s, other);
+                    Ok(Value::String(result.into()))
+                }
+                (other, Value::String(s)) => {
+                    let result = format!("{}{}", other, s);
+                    Ok(Value::String(result.into()))
+                }
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
             BinaryOp::Minus => match (a, b) {
@@ -588,6 +670,10 @@ impl Engine {
             },
             BinaryOp::Divide => match (a, b) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a / *b)),
+                (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
+            },
+            BinaryOp::Mod => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a % *b)),
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
             BinaryOp::LT => match (a, b) {
@@ -658,6 +744,7 @@ impl Engine {
             Expression::Call(f, args) => {
                 let f = self.evaluate(f)?;
                 match f {
+                    // Call function
                     Value::Function(f) => {
                         let args: Vec<_> = args
                             .iter()
@@ -665,6 +752,21 @@ impl Engine {
                             .collect::<Result<_, _>>()?;
                         self.call(&f, &args)
                     }
+
+                    // If object, construct new object using it as proto
+                    Value::Object(obj) => {
+                        let args: Vec<_> = args
+                            .iter()
+                            .map(|arg| self.evaluate(arg))
+                            .collect::<Result<_, _>>()?;
+
+                        let mut new_obj = Object::new();
+                        new_obj.set_proto(obj.clone());
+                        let new_obj = Value::Object(ptr(new_obj));
+                        self.call_method(&new_obj, "new", &args);
+                        Ok(new_obj)
+                    }
+
                     _ => todo!(),
                 }
             }
@@ -672,6 +774,10 @@ impl Engine {
                 let a = self.evaluate(a)?;
                 let b = self.evaluate(b)?;
                 self.evaluate_binary(*op, &a, &b)
+            }
+            Expression::Unary(op, value) => {
+                let value = self.evaluate(value)?;
+                self.evaluate_unary(op, &value)
             }
             Expression::Member(parent, key) => {
                 let parent = self.evaluate(parent)?;
@@ -714,7 +820,7 @@ impl Engine {
 
     fn call(&mut self, f: &Function, args: &[Value]) -> EvalResult<Value> {
         match &f.callable {
-            Callable::BuiltIn(func) => func(f.self_param.clone(), args),
+            Callable::BuiltIn(func) => func(self, f.self_param.clone(), args),
             Callable::RFunction(params, body) => {
                 // Capture environment
                 self.env.descend();
@@ -754,7 +860,19 @@ impl Engine {
         }
     }
 
-    fn call_method(
+    pub fn print_value(&mut self, value: &Value) -> EvalResult<()> {
+        let to_print = match value {
+            obj @ Value::Object(_) => self.call_method(obj, "to_string", &[])?,
+            other => other.clone(),
+        };
+        match to_print {
+            Value::String(s) => print!("{}", s),
+            other => print!("{}", other),
+        }
+        Ok(())
+    }
+
+    pub fn call_method(
         &mut self,
         parent: &Value,
         method: impl AsRef<str>,
@@ -772,7 +890,7 @@ type Str = Rc<str>;
 
 #[derive(Clone)]
 pub enum Callable {
-    BuiltIn(Rc<dyn Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value>>),
+    BuiltIn(Rc<dyn Fn(&mut Engine, Option<Rc<Value>>, &[Value]) -> EvalResult<Value>>),
     RFunction(Rc<Vec<String>>, Expression),
 }
 
@@ -876,7 +994,7 @@ impl Object {
 
     pub fn define_method<F>(&mut self, name: impl Into<String>, method: F)
     where
-        F: Fn(Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
+        F: Fn(&mut Engine, Option<Rc<Value>>, &[Value]) -> EvalResult<Value> + 'static,
     {
         let function = Function {
             capture: Rc::new(HashMap::new()),
@@ -918,7 +1036,7 @@ impl fmt::Display for Value {
             Value::Number(n) => write!(f, "{}", n),
             Value::Boolean(b) if *b => write!(f, "True"),
             Value::Boolean(_) => write!(f, "False"),
-            Value::String(s) => write!(f, "{}", s),
+            Value::String(s) => write!(f, "\"{}\"", s),
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Object(obj) => write!(f, "{}", obj.as_ref().borrow()),
             Value::List(list) => {
@@ -939,7 +1057,7 @@ impl fmt::Display for Value {
 
                 write!(f, "]")
             }
-            Value::Function(func) => write!(f, "{:?}", func),
+            Value::Function(_) => write!(f, "<Function>"),
             Value::Link(path) => write!(f, "{}", path.join("::")),
             Value::None => write!(f, "None"),
         }
@@ -957,7 +1075,7 @@ impl Value {
             Value::List(_) => "List",
             Value::Function(_) => "Function",
             Value::Link(_) => "Link",
-            Value::None => "Null",
+            Value::None => "None",
         }
     }
 }

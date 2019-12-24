@@ -151,7 +151,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         match handle_input(&mut engine, input) {
-            Ok(value) if value.type_of() != "None" => println!("{}", value),
+            Ok(value) if value.type_of() != "None" => {
+                engine.print_value(&value)?;
+                println!();
+            }
             Ok(_) => (),
             Err(why) => println!("error: {}", why),
         }

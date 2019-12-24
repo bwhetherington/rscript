@@ -188,7 +188,9 @@ impl Statement {
             TypeAlias { .. }
             | FunctionDeclaration { .. }
             | ClassDeclaration { .. }
-            | Import { .. } => true,
+            | Import { .. }
+            | Assignment { .. }
+            | Reassignment { .. } => true,
             _ => false,
         }
     }
