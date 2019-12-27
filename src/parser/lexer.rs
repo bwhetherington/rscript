@@ -69,9 +69,11 @@ pub enum TokenKind {
     Loop,
     Break,
     None,
+    For,
+    In,
 }
 
-const TOKENS: [(&'static str, TokenKind); 17] = [
+const TOKENS: [(&'static str, TokenKind); 19] = [
     ("True", TokenKind::Boolean(true)),
     ("False", TokenKind::Boolean(false)),
     ("None", TokenKind::None),
@@ -89,6 +91,8 @@ const TOKENS: [(&'static str, TokenKind); 17] = [
     ("while", TokenKind::While),
     ("loop", TokenKind::Loop),
     ("break", TokenKind::Break),
+    ("for", TokenKind::For),
+    ("in", TokenKind::In),
 ];
 
 fn is_delimiter(ch: char) -> bool {

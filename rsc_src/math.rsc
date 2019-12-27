@@ -1,36 +1,29 @@
 pub fn factorial(x) = {
-  let output = 1;
-  while x > 0 {
-    output = output * x;
-    x = x - 1;
+  let prod = 1;
+  for i in iter::Range(1, x + 1) {
+    prod = prod * i;
   };
-  output
+  prod
 };
 
-pub fn factorial_recursive(x) = {
-    if x < 1 then 1 else x * factorial_recursive(x - 1)
-};
+# pub fn factorial_recursive(x) = {
+#     if x < 1 then 1 else x * factorial_recursive(x - 1)
+# };
 
 pub fn fibonacci(x) = {
   let fibs = [0, 1];
-  let i = 2;
-  while i <= x {
+  for i in iter::Range(2, x + 1) {
     let val = fibs[i - 1] + fibs[i - 2];
     fibs.push(val);
-    i = i + 1;
   };
   fibs[x]
 };
 
-pub let Point = Object();
+pub let Vec2 = Object();
 
-Point.new = |x, y| {
+Vec2.new = |x, y| {
   self.x = x;
   self.y = y;
 };
 
-Point.to_string = || {
-  "(" + self.x + ", " + self.y + ")"
-};
-
-Point.add = |other| Point(self.x + other.x, self.y + other.y);
+Vec2.plus = |other| math::Vec2(self.x + other.x, self.y + other.y);

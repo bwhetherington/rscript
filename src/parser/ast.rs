@@ -179,6 +179,11 @@ pub enum Statement {
         body: Vec<Statement>,
     },
     Break,
+    For {
+        item: String,
+        iterator: Expression,
+        body: Vec<Statement>,
+    },
 }
 
 impl Statement {
@@ -543,6 +548,7 @@ impl<I: TokenIter> Parser<I> {
             last_expr: None,
         };
         self.parse_block_internal(&mut block_data)?;
+        block_data.statements = hoist_assignments(block_data.statements);
 
         let BlockData {
             statements,
@@ -927,8 +933,47 @@ impl<I: TokenIter> Parser<I> {
                     }
                 }
 
+                statements = hoist_assignments(statements);
+
                 if finished {
                     Ok(Statement::Loop { body: statements })
+                } else {
+                    Err(ParseError::EOF)
+                }
+            }
+
+            TokenKind::For => {
+                let item = self.parse_identifier()?;
+                self.parse_token(TokenKind::In)?;
+                let iterator = self.parse_expr()?;
+                self.parse_token(TokenKind::OpenBrace)?;
+
+                let mut statements = Vec::new();
+                let mut finished = false;
+
+                while let Some(tok) = self.next_token()? {
+                    match tok.kind {
+                        TokenKind::CloseBrace => {
+                            finished = true;
+                            break;
+                        }
+                        _ => {
+                            self.unread(tok);
+                            let statement = self.parse_statement()?;
+                            self.parse_token(TokenKind::Semicolon)?;
+                            statements.push(statement);
+                        }
+                    }
+                }
+
+                statements = hoist_assignments(statements);
+
+                if finished {
+                    Ok(Statement::For {
+                        item,
+                        iterator,
+                        body: statements,
+                    })
                 } else {
                     Err(ParseError::EOF)
                 }
@@ -955,6 +1000,8 @@ impl<I: TokenIter> Parser<I> {
                         }
                     }
                 }
+
+                statements = hoist_assignments(statements);
 
                 if finished {
                     Ok(Statement::While {
@@ -1109,6 +1156,37 @@ impl<I: TokenIter> Parser<I> {
             self.parse_token(TokenKind::Semicolon)?;
             buf.push(statement);
         }
+        buf = hoist_assignments(buf);
         Ok(buf)
     }
+}
+
+/// Rearranges the list of statements such that all assignments appear first
+pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
+    let mut imports = Vec::new();
+    let mut assignments = Vec::new();
+    let mut others = Vec::new();
+
+    for statement in statements {
+        match statement {
+            import @ Statement::Import { .. } => {
+                imports.push(import);
+            }
+            assignment @ Statement::Assignment { .. } => {
+                assignments.push(assignment);
+            }
+            function @ Statement::FunctionDeclaration { .. } => {
+                assignments.push(function);
+            }
+            other => {
+                others.push(other);
+            }
+        }
+    }
+
+    imports
+        .into_iter()
+        .chain(assignments.into_iter())
+        .chain(others.into_iter())
+        .collect()
 }

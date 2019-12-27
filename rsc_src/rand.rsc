@@ -14,10 +14,6 @@ Rng.next = || {
   self.current / M
 };
 
-Rng.next_int = |min, max| {
-  let num = self.next();
-  let diff = max - min;
-  floor(num * diff) + min
-};
+Rng.ints = |min, max| self.map(|r| floor(r * (max - min)) + min);
 
-pub let DEFAULT_RNG = Rng(1234);
+pub let DEFAULT_RNG = rand::Rng(unix_time());

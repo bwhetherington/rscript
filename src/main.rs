@@ -125,13 +125,14 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = Engine::new();
-    engine.init();
+    engine.init()?;
 
+    parse_ast("rsc_src")?;
     let module = parse_module("rsc_src")?;
-    engine.load_module(&module, true).unwrap();
+    engine.load_module(&module, true).expect("failed");
 
     // Find the main method
-    engine.run_main()?;
+    engine.run_main().expect("failed");
     // match engine.run_main()? {
     //     Value::Number(n) if (n as i32 as f64) == n => {
     //         let n = n as i32;
