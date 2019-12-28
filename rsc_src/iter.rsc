@@ -33,6 +33,8 @@ Iterator.reduce = |func| {
   acc
 };
 
+Iterator.sum = || self.reduce(|acc, x| acc + x);
+
 pub let ListIterator = Iterator();
 
 ListIterator.new = |list| {

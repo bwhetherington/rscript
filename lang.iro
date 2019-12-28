@@ -1,0 +1,45 @@
+name = rscript
+file_extensions [] = rsc;
+background_color = black
+color = white
+
+styles [] {
+   .keyword : style {
+      color = yellow
+   }
+   
+   .control : style {
+      color = pink
+   }
+   
+   .function : style {
+      color = red
+   }
+   
+   .number : style {
+      color = orange
+   }
+   
+   .comment : style {
+      color = light_green
+   }
+}
+
+contexts[] {
+   main : context {
+      : pattern {
+         regex \= (\b(pub|fn|let|True|False|None|self)\b)
+         styles [] = .keyword;
+      }
+      
+      : pattern {
+         regex \= (\b(if|then|else|while|loop|for|in)\b)
+         styles [] = .control;
+      }
+      
+      : pattern {
+         regex \= (\b([0-9](\.[0-9]*)?)\b)
+         styles [] = .number;
+      }
+   }
+}

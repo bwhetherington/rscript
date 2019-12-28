@@ -752,7 +752,8 @@ impl Engine {
                 ignore.insert(parameter);
                 self.extract_closure_to_frame(closure, value, ignore)?;
             }
-            Reassignment { value, .. } => {
+            Reassignment { value, location } => {
+                self.extract_closure_to_frame(closure, location, ignore)?;
                 self.extract_closure_to_frame(closure, value, ignore)?;
             }
             Loop { body, .. } => {
@@ -1259,7 +1260,10 @@ impl Engine {
                         Ok(new_obj)
                     }
 
-                    _ => todo!(),
+                    other => {
+                        println!("unimplemented: {}", other);
+                        todo!()
+                    }
                 }
             }
             Expression::Binary(op, a, b) => {

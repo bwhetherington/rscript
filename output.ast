@@ -7,79 +7,6 @@ Module {
             body: [
                 FunctionDeclaration {
                     visibility: Public,
-                    identifier: "factorial",
-                    parameters: [
-                        "x",
-                    ],
-                    body: Block(
-                        [
-                            Assignment {
-                                visibility: Private,
-                                mutable: false,
-                                parameter: "prod",
-                                value: Float(
-                                    1.0,
-                                ),
-                            },
-                            For {
-                                item: "i",
-                                iterator: Call(
-                                    Identifier(
-                                        [
-                                            "iter",
-                                            "Range",
-                                        ],
-                                    ),
-                                    [
-                                        Float(
-                                            1.0,
-                                        ),
-                                        Binary(
-                                            Plus,
-                                            Identifier(
-                                                [
-                                                    "x",
-                                                ],
-                                            ),
-                                            Float(
-                                                1.0,
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                                body: [
-                                    Reassignment {
-                                        location: Identifier(
-                                            [
-                                                "prod",
-                                            ],
-                                        ),
-                                        value: Binary(
-                                            Times,
-                                            Identifier(
-                                                [
-                                                    "prod",
-                                                ],
-                                            ),
-                                            Identifier(
-                                                [
-                                                    "i",
-                                                ],
-                                            ),
-                                        ),
-                                    },
-                                ],
-                            },
-                        ],
-                        Identifier(
-                            [
-                                "prod",
-                            ],
-                        ),
-                    ),
-                },
-                FunctionDeclaration {
-                    visibility: Public,
                     identifier: "fibonacci",
                     parameters: [
                         "x",
@@ -219,6 +146,71 @@ Module {
                             ],
                         ),
                         [],
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "add",
+                    parameters: [
+                        "x",
+                        "y",
+                    ],
+                    body: Call(
+                        Member(
+                            Identifier(
+                                [
+                                    "x",
+                                ],
+                            ),
+                            "flat_map",
+                        ),
+                        [
+                            Lambda(
+                                [
+                                    "x",
+                                ],
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "y",
+                                            ],
+                                        ),
+                                        "flat_map",
+                                    ),
+                                    [
+                                        Lambda(
+                                            [
+                                                "y",
+                                            ],
+                                            Call(
+                                                Identifier(
+                                                    [
+                                                        "monad",
+                                                        "Some",
+                                                    ],
+                                                ),
+                                                [
+                                                    Binary(
+                                                        Plus,
+                                                        Identifier(
+                                                            [
+                                                                "x",
+                                                            ],
+                                                        ),
+                                                        Identifier(
+                                                            [
+                                                                "y",
+                                                            ],
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                            ),
+                        ],
                     ),
                 },
                 Reassignment {
@@ -922,6 +914,57 @@ Module {
                                     ),
                                 ),
                             ],
+                        ),
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "factorial",
+                    parameters: [
+                        "x",
+                    ],
+                    body: If(
+                        Binary(
+                            LT,
+                            Identifier(
+                                [
+                                    "x",
+                                ],
+                            ),
+                            Float(
+                                1.0,
+                            ),
+                        ),
+                        Float(
+                            1.0,
+                        ),
+                        Binary(
+                            Times,
+                            Identifier(
+                                [
+                                    "x",
+                                ],
+                            ),
+                            Call(
+                                Identifier(
+                                    [
+                                        "self",
+                                    ],
+                                ),
+                                [
+                                    Binary(
+                                        Minus,
+                                        Identifier(
+                                            [
+                                                "x",
+                                            ],
+                                        ),
+                                        Float(
+                                            1.0,
+                                        ),
+                                    ),
+                                ],
+                            ),
                         ),
                     ),
                 },
@@ -1915,6 +1958,50 @@ Module {
                                     "acc",
                                 ],
                             ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        "sum",
+                    ),
+                    value: Lambda(
+                        [],
+                        Call(
+                            Member(
+                                Identifier(
+                                    [
+                                        "self",
+                                    ],
+                                ),
+                                "reduce",
+                            ),
+                            [
+                                Lambda(
+                                    [
+                                        "acc",
+                                        "x",
+                                    ],
+                                    Binary(
+                                        Plus,
+                                        Identifier(
+                                            [
+                                                "acc",
+                                            ],
+                                        ),
+                                        Identifier(
+                                            [
+                                                "x",
+                                            ],
+                                        ),
+                                    ),
+                                ),
+                            ],
                         ),
                     ),
                 },

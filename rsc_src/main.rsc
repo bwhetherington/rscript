@@ -32,6 +32,10 @@ Fraction.to_string = || {
   }
 };
 
+pub fn factorial(x) = {
+    if x < 1 then 1 else x * self(x - 1)
+};
+
 pub fn main() = {
   let fract = Fraction(4, 8);
   print(fract);

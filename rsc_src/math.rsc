@@ -1,15 +1,4 @@
-pub fn factorial(x) = {
-  let prod = 1;
-  for i in iter::Range(1, x + 1) {
-    prod = prod * i;
-  };
-  prod
-};
-
-# pub fn factorial_recursive(x) = {
-#     if x < 1 then 1 else x * factorial_recursive(x - 1)
-# };
-
+# Produces the nth fibonacci number.
 pub fn fibonacci(x) = {
   let fibs = [0, 1];
   for i in iter::Range(2, x + 1) {
@@ -27,3 +16,7 @@ Vec2.new = |x, y| {
 };
 
 Vec2.plus = |other| math::Vec2(self.x + other.x, self.y + other.y);
+
+pub fn add(x, y) = {
+  x.flat_map(|x| y.flat_map(|y| monad::Some(x + y)))
+};

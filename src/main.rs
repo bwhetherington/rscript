@@ -129,10 +129,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     parse_ast("rsc_src")?;
     let module = parse_module("rsc_src")?;
-    engine.load_module(&module, true).expect("failed");
+    engine.load_module(&module, true)?;
 
     // Find the main method
-    engine.run_main().expect("failed");
+    engine.run_main()?;
     // match engine.run_main()? {
     //     Value::Number(n) if (n as i32 as f64) == n => {
     //         let n = n as i32;
