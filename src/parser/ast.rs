@@ -15,6 +15,7 @@ pub enum BinaryOp {
     Minus,
     Times,
     Divide,
+    Exponentiate,
     Mod,
     Equal,
     NotEqual,
@@ -35,6 +36,7 @@ impl BinaryOp {
     pub fn precedence(&self) -> usize {
         use BinaryOp::*;
         match self {
+            Exponentiate => 10,
             Times | Divide | Mod => 9,
             Plus | Minus => 8,
             RShift | LShift => 7,
@@ -218,7 +220,6 @@ impl error::Error for ParseError {}
 
 impl fmt::Display for ParseError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "ParseError: ")?;
         match self {
             ParseError::LexError(e) => write!(formatter, "{}", e),
             ParseError::EOF => write!(formatter, "EOF"),
@@ -369,6 +370,7 @@ impl<I: TokenIter> Parser<I> {
     fn next_operator(&mut self) -> ParseResult<Option<BinaryOp>> {
         let token = self.next_token()?;
         Ok(token.and_then(|token| match token.kind {
+            TokenKind::DoubleAsterisk => Some(BinaryOp::Exponentiate),
             TokenKind::Plus => Some(BinaryOp::Plus),
             TokenKind::Minus => Some(BinaryOp::Minus),
             TokenKind::Times => Some(BinaryOp::Times),
@@ -647,13 +649,26 @@ impl<I: TokenIter> Parser<I> {
                 let condition = self.parse_expr()?;
                 self.parse_token(TokenKind::Then)?;
                 let then_expr = self.parse_expr()?;
-                self.parse_token(TokenKind::Else)?;
-                let else_expr = self.parse_expr()?;
-                Ok(Expression::If(
-                    Box::new(condition),
-                    Box::new(then_expr),
-                    Box::new(else_expr),
-                ))
+
+                let token = self.next_token_internal()?;
+                match token.kind {
+                    TokenKind::Else => {
+                        let else_expr = self.parse_expr()?;
+                        Ok(Expression::If(
+                            Box::new(condition),
+                            Box::new(then_expr),
+                            Box::new(else_expr),
+                        ))
+                    }
+                    _ => {
+                        self.unread(token);
+                        Ok(Expression::If(
+                            Box::new(condition),
+                            Box::new(then_expr),
+                            Box::new(Expression::None),
+                        ))
+                    }
+                }
             }
             TokenKind::Or => self.parse_lambda(),
             TokenKind::DoubleOr => {
@@ -661,13 +676,10 @@ impl<I: TokenIter> Parser<I> {
                 let body = self.parse_expr()?;
                 Ok(Expression::Lambda(params, Box::new(body)))
             }
-            _ => {
-                println!("{:?}", token);
-                Err(ParseError::Custom(format!(
-                    "unexpected token: {:?}",
-                    token.kind
-                )))
-            }
+            _ => Err(ParseError::Custom(format!(
+                "unexpected token: {:?}",
+                token.kind
+            ))),
         }
     }
 
@@ -852,7 +864,7 @@ impl<I: TokenIter> Parser<I> {
                         _ => {
                             self.unread(tok);
                             let statement = self.parse_statement()?;
-                            self.parse_token(TokenKind::Semicolon)?;
+                            self.parse_semicolon()?;
                             statements.push(statement);
                         }
                     }
@@ -927,7 +939,7 @@ impl<I: TokenIter> Parser<I> {
                         _ => {
                             self.unread(tok);
                             let statement = self.parse_statement()?;
-                            self.parse_token(TokenKind::Semicolon)?;
+                            self.parse_semicolon()?;
                             statements.push(statement);
                         }
                     }
@@ -960,7 +972,7 @@ impl<I: TokenIter> Parser<I> {
                         _ => {
                             self.unread(tok);
                             let statement = self.parse_statement()?;
-                            self.parse_token(TokenKind::Semicolon)?;
+                            self.parse_semicolon()?;
                             statements.push(statement);
                         }
                     }
@@ -995,7 +1007,7 @@ impl<I: TokenIter> Parser<I> {
                         _ => {
                             self.unread(tok);
                             let statement = self.parse_statement()?;
-                            self.parse_token(TokenKind::Semicolon)?;
+                            self.parse_semicolon()?;
                             statements.push(statement);
                         }
                     }
@@ -1072,11 +1084,7 @@ impl<I: TokenIter> Parser<I> {
         let statement = self.parse_statement()?;
 
         let token = self.next_token_internal()?;
-        match token.kind {
-            TokenKind::Semicolon => {
-                buf.statements.push(statement);
-                self.parse_block_internal(buf)
-            }
+        match &token.kind {
             TokenKind::CloseBrace => match statement {
                 Statement::Expression(expr) => {
                     buf.last_expr = Some(expr);
@@ -1086,6 +1094,10 @@ impl<I: TokenIter> Parser<I> {
                     "final non-semicolon-suffixed statement of a block must be an expression",
                 )),
             },
+            TokenKind::Semicolon => {
+                buf.statements.push(statement);
+                self.parse_block_internal(buf)
+            }
             _ => {
                 buf.statements.push(statement);
                 self.unread(token);
@@ -1139,7 +1151,7 @@ impl<I: TokenIter> Parser<I> {
                 _ => {
                     self.unread(token);
                     let statement = self.parse_interface_statement()?;
-                    self.parse_token(TokenKind::Semicolon)?;
+                    self.parse_semicolon()?;
                     statements.push(statement);
                 }
             }
@@ -1148,12 +1160,24 @@ impl<I: TokenIter> Parser<I> {
         Ok(Type::Interface { statements })
     }
 
+    fn parse_semicolon(&mut self) -> ParseResult<()> {
+        // match self.last_token {
+        //     Some(TokenKind::CloseBrace) => {}
+        //     _ => {
+        //         self.parse_token(TokenKind::Semicolon)?;
+        //     }
+        // }
+        // Ok(())
+        self.parse_token(TokenKind::Semicolon)?;
+        Ok(())
+    }
+
     pub fn parse_statements(&mut self) -> ParseResult<Vec<Statement>> {
         let mut buf = Vec::new();
         while let Some(token) = self.next_token()? {
             self.unread(token);
             let statement = self.parse_statement()?;
-            self.parse_token(TokenKind::Semicolon)?;
+            self.parse_semicolon();
             buf.push(statement);
         }
         buf = hoist_assignments(buf);

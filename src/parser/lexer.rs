@@ -25,6 +25,7 @@ pub enum TokenKind {
     MinusAssign,
     Times,
     TimesAssign,
+    DoubleAsterisk,
     Divide,
     DivideAssign,
     Mod,
@@ -209,7 +210,12 @@ impl<'a> Lexer<'a> {
                     buf.push_str("\\$");
                 }
                 '\\' => {
-                    self.next_char().map(|ch| buf.push(ch));
+                    self.next_char().map(|ch| match ch {
+                        'n' => buf.push('\n'),
+                        't' => buf.push('\t'),
+                        'r' => buf.push('\r'),
+                        ch => buf.push(ch),
+                    });
                 }
                 '"' => {
                     let len = buf.len() + 2;
@@ -299,7 +305,7 @@ impl<'a> Lexer<'a> {
             '=' => self.parse_double(Equal, &[('=', DoubleEqual), ('>', Arrow)]),
             '+' => self.parse_double(Plus, &[('=', PlusAssign)]),
             '-' => self.parse_double(Minus, &[('=', MinusAssign)]),
-            '*' => self.parse_double(Times, &[('=', TimesAssign)]),
+            '*' => self.parse_double(Times, &[('*', DoubleAsterisk), ('=', TimesAssign)]),
             '/' => self.parse_double(Divide, &[('=', DivideAssign)]),
             '%' => self.parse_double(Mod, &[('=', ModAssign)]),
             '>' => self.parse_double(GT, &[('>', RShift), ('=', GTE)]),

@@ -7,8 +7,10 @@ Iterator.map = |map| MapIterator(self, map);
 Iterator.take = |num| TakeIterator(self, num);
 Iterator.skip = |num| SkipIterator(self, num);
 Iterator.zip = |iter| ZipIterator(self, iter);
+Iterator.iter = || self;
+Iterator.slice = |from, to| self.skip(from).take(to - from);
 
-Iterator.collect = || {
+Iterator.list = || {
   let list = [];
   let value = self.next();
   while value != None {
@@ -35,29 +37,38 @@ Iterator.reduce = |func| {
 
 Iterator.sum = || self.reduce(|acc, x| acc + x);
 
-pub let ListIterator = Iterator();
+Iterator.for_each = |func| {
+  for x in self {
+    func(x);
+  };
+};
 
-ListIterator.new = |list| {
+pub let IndexIterator = Iterator();
+
+IndexIterator.new = |list| {
   self.list = list;
+  self.end = list.len();
   self.index = 0;
 };
 
-ListIterator.peek = || {
+IndexIterator.peek = || {
   self.list[self.index]
 };
 
-ListIterator.next = || {
-  let value = self.list[self.index];
-  self.index = self.index + 1;
-  value
+IndexIterator.next = || {
+  if self.index < self.end then {
+    let value = self.list[self.index];
+    self.index = self.index + 1;
+    value
+  }
 };
 
 List.iter = || {
-  ListIterator(self)
+  IndexIterator(self)
 };
 
 String.iter = || {
-  ListIterator(self)
+  IndexIterator(self)
 };
 
 pub let FilterIterator = Iterator();
@@ -69,9 +80,7 @@ FilterIterator.new = |iter, pred| {
 
 FilterIterator.next = || {
   let value = self.iter.next();
-  if value == None then {
-    None
-  } else {
+  if value then {
     if self.pred(value) then {
       value
     } else {
@@ -89,10 +98,8 @@ MapIterator.new = |iter, map| {
 
 MapIterator.next = || {
   let value = self.iter.next();
-  if value != None then {
+  if value then {
     self.map(value)
-  } else {
-    None
   }
 };
 
@@ -117,7 +124,7 @@ pub let SkipIterator = Iterator();
 
 SkipIterator.new = |iter, num| {
   self.iter = iter;
-  for i in iter::Range(0, num) {
+  for i in Range(0, num) {
     self.iter.next();
   };
 };
@@ -136,8 +143,6 @@ Range.next = || {
     let val = self.from;
     self.from = val + 1;
     val
-  } else {
-    None
   }
 };
 
@@ -154,7 +159,16 @@ ZipIterator.next = || {
 
   if a != None && b != None then {
     [a, b]
-  } else {
-    None
   }
+};
+
+pub let FunctionIterator = Iterator();
+
+FunctionIterator.new = |state, func| {
+  self.func = func;
+  self.state = state;
+};
+
+FunctionIterator.next = || {
+  self.func(self.state)
 };

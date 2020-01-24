@@ -123,41 +123,92 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
     }
 }
 
+fn load_std(engine: &mut Engine) -> Result<(), Box<dyn std::error::Error>> {
+    let home = std::env::var("RSC_HOME")?;
+    let module = parse_module(home)?;
+    engine.load_module(&module, false)?;
+    Ok(())
+}
+
+struct ProgramArgs<'a> {
+    interactive: bool,
+    file: Option<&'a str>,
+    file_args: &'a [String],
+}
+
+fn parse_args<'a>(args: &'a [String]) -> ProgramArgs<'a> {
+    let mut index = 0;
+    let mut interactive = false;
+    let mut file = None;
+
+    // Check if first arg is interactive
+    if args.len() > index && &args[index] == "-i" {
+        interactive = true;
+        index += 1;
+    }
+
+    // Check if a file name is specified
+    if args.len() > index {
+        // Get file
+        file = Some(args[index].as_str());
+        index += 1;
+    } else {
+        // Otherwise we are done
+        // No file means we will make it interactive by default
+        interactive = true;
+    }
+
+    // Pass remaining args
+    let file_args = &args[index..];
+
+    ProgramArgs {
+        interactive,
+        file,
+        file_args,
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check args
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    let ProgramArgs {
+        interactive,
+        file,
+        file_args,
+    } = parse_args(&args);
+
+    // Check if first arg is interactive
+
     let mut engine = Engine::new();
     engine.init()?;
 
-    parse_ast("rsc_src")?;
-    let module = parse_module("rsc_src")?;
-    engine.load_module(&module, true)?;
+    load_std(&mut engine).unwrap();
 
-    // Find the main method
-    engine.run_main()?;
-    // match engine.run_main()? {
-    //     Value::Number(n) if (n as i32 as f64) == n => {
-    //         let n = n as i32;
-    //         // std::process::exit(n);
-    //     }
-    //     other => std::process::exit(-1),
-    // }
+    // Load specified module
+    if let Some(module) = file {
+        let module = parse_module(module)?;
+        engine.load_module(&module, true);
+        engine.run_main()?;
+    }
 
-    // Ok(())
+    // let module = parse_module("std")?;
+    // engine.load_module(&module, true)?;
 
-    let mut console = Console::new();
-    loop {
-        let input = console.prompt("> ")?;
+    // // Find the main method
+    // engine.run_main()?;
 
-        if input == "exit" {
-            break;
-        }
-
-        match handle_input(&mut engine, input) {
-            Ok(value) if value.type_of() != "None" => {
-                engine.print_value(&value)?;
-                println!();
+    if interactive {
+        let mut console = Console::new();
+        loop {
+            let input = console.prompt("> ")?;
+            match handle_input(&mut engine, input) {
+                Ok(value) if value.type_of() != "None" => {
+                    engine.print_value(&value)?;
+                    println!();
+                }
+                Ok(_) => (),
+                Err(why) => println!("error: {}", why),
             }
-            Ok(_) => (),
-            Err(why) => println!("error: {}", why),
         }
     }
 

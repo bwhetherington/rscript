@@ -148,71 +148,6 @@ Module {
                         [],
                     ),
                 },
-                FunctionDeclaration {
-                    visibility: Public,
-                    identifier: "add",
-                    parameters: [
-                        "x",
-                        "y",
-                    ],
-                    body: Call(
-                        Member(
-                            Identifier(
-                                [
-                                    "x",
-                                ],
-                            ),
-                            "flat_map",
-                        ),
-                        [
-                            Lambda(
-                                [
-                                    "x",
-                                ],
-                                Call(
-                                    Member(
-                                        Identifier(
-                                            [
-                                                "y",
-                                            ],
-                                        ),
-                                        "flat_map",
-                                    ),
-                                    [
-                                        Lambda(
-                                            [
-                                                "y",
-                                            ],
-                                            Call(
-                                                Identifier(
-                                                    [
-                                                        "monad",
-                                                        "Some",
-                                                    ],
-                                                ),
-                                                [
-                                                    Binary(
-                                                        Plus,
-                                                        Identifier(
-                                                            [
-                                                                "x",
-                                                            ],
-                                                        ),
-                                                        Identifier(
-                                                            [
-                                                                "y",
-                                                            ],
-                                                        ),
-                                                    ),
-                                                ],
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                            ),
-                        ],
-                    ),
-                },
                 Reassignment {
                     location: Member(
                         Identifier(
@@ -282,7 +217,6 @@ Module {
                         Call(
                             Identifier(
                                 [
-                                    "math",
                                     "Vec2",
                                 ],
                             ),
@@ -329,12 +263,816 @@ Module {
                         ),
                     ),
                 },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Vec2",
+                            ],
+                        ),
+                        "minus",
+                    ),
+                    value: Lambda(
+                        [
+                            "other",
+                        ],
+                        Call(
+                            Identifier(
+                                [
+                                    "Vec2",
+                                ],
+                            ),
+                            [
+                                Binary(
+                                    Minus,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "x",
+                                    ),
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "other",
+                                            ],
+                                        ),
+                                        "x",
+                                    ),
+                                ),
+                                Binary(
+                                    Minus,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "y",
+                                    ),
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "other",
+                                            ],
+                                        ),
+                                        "y",
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Vec2",
+                            ],
+                        ),
+                        "times",
+                    ),
+                    value: Lambda(
+                        [
+                            "other",
+                        ],
+                        Call(
+                            Identifier(
+                                [
+                                    "Vec2",
+                                ],
+                            ),
+                            [
+                                Binary(
+                                    Times,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "x",
+                                    ),
+                                    Identifier(
+                                        [
+                                            "other",
+                                        ],
+                                    ),
+                                ),
+                                Binary(
+                                    Times,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "y",
+                                    ),
+                                    Identifier(
+                                        [
+                                            "other",
+                                        ],
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Vec2",
+                            ],
+                        ),
+                        "divide",
+                    ),
+                    value: Lambda(
+                        [
+                            "other",
+                        ],
+                        Call(
+                            Identifier(
+                                [
+                                    "Vec2",
+                                ],
+                            ),
+                            [
+                                Binary(
+                                    Divide,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "x",
+                                    ),
+                                    Identifier(
+                                        [
+                                            "other",
+                                        ],
+                                    ),
+                                ),
+                                Binary(
+                                    Divide,
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "y",
+                                    ),
+                                    Identifier(
+                                        [
+                                            "other",
+                                        ],
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                },
             ],
             children: [],
         },
         Module {
             identifier: "test",
             body: [],
+            children: [],
+        },
+        Module {
+            identifier: "example",
+            body: [
+                Import {
+                    path: [
+                        "io",
+                        "println",
+                    ],
+                    alias: "println",
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: false,
+                    parameter: "Program",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Object",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "play_game",
+                    parameters: [
+                        "min",
+                        "max",
+                    ],
+                    body: Block(
+                        [
+                            Assignment {
+                                visibility: Private,
+                                mutable: false,
+                                parameter: "game",
+                                value: Call(
+                                    Identifier(
+                                        [
+                                            "Program",
+                                        ],
+                                    ),
+                                    [
+                                        Identifier(
+                                            [
+                                                "min",
+                                            ],
+                                        ),
+                                        Identifier(
+                                            [
+                                                "max",
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            },
+                            Expression(
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "game",
+                                            ],
+                                        ),
+                                        "start",
+                                    ),
+                                    [],
+                                ),
+                            ),
+                        ],
+                        Tuple(
+                            [],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Program",
+                            ],
+                        ),
+                        "new",
+                    ),
+                    value: Lambda(
+                        [
+                            "min",
+                            "max",
+                        ],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "real_number",
+                                    value: Call(
+                                        Member(
+                                            Call(
+                                                Member(
+                                                    Call(
+                                                        Identifier(
+                                                            [
+                                                                "rand",
+                                                                "rng",
+                                                            ],
+                                                        ),
+                                                        [],
+                                                    ),
+                                                    "ints",
+                                                ),
+                                                [
+                                                    Identifier(
+                                                        [
+                                                            "min",
+                                                        ],
+                                                    ),
+                                                    Binary(
+                                                        Plus,
+                                                        Identifier(
+                                                            [
+                                                                "max",
+                                                            ],
+                                                        ),
+                                                        Float(
+                                                            1.0,
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                            "next",
+                                        ),
+                                        [],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "actual",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "real_number",
+                                        ],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "is_running",
+                                    ),
+                                    value: Boolean(
+                                        false,
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "guesses",
+                                    ),
+                                    value: Float(
+                                        10.0,
+                                    ),
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Program",
+                            ],
+                        ),
+                        "start",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "is_running",
+                                    ),
+                                    value: Boolean(
+                                        true,
+                                    ),
+                                },
+                                Expression(
+                                    Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "self",
+                                                ],
+                                            ),
+                                            "run",
+                                        ),
+                                        [],
+                                    ),
+                                ),
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Program",
+                            ],
+                        ),
+                        "stop",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "is_running",
+                                    ),
+                                    value: Boolean(
+                                        false,
+                                    ),
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Program",
+                            ],
+                        ),
+                        "run",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Expression(
+                                    Call(
+                                        Identifier(
+                                            [
+                                                "println",
+                                            ],
+                                        ),
+                                        [
+                                            String(
+                                                "Guess a number between 1 and 100",
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                                While {
+                                    condition: Binary(
+                                        DoubleAnd,
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "self",
+                                                ],
+                                            ),
+                                            "is_running",
+                                        ),
+                                        Binary(
+                                            GT,
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "self",
+                                                    ],
+                                                ),
+                                                "guesses",
+                                            ),
+                                            Float(
+                                                0.0,
+                                            ),
+                                        ),
+                                    ),
+                                    body: [
+                                        Assignment {
+                                            visibility: Private,
+                                            mutable: false,
+                                            parameter: "user_input",
+                                            value: Call(
+                                                Member(
+                                                    Call(
+                                                        Identifier(
+                                                            [
+                                                                "io",
+                                                                "input",
+                                                            ],
+                                                        ),
+                                                        [
+                                                            String(
+                                                                "Guess: ",
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    "trim",
+                                                ),
+                                                [],
+                                            ),
+                                        },
+                                        Expression(
+                                            If(
+                                                Binary(
+                                                    Equal,
+                                                    Identifier(
+                                                        [
+                                                            "user_input",
+                                                        ],
+                                                    ),
+                                                    String(
+                                                        "stop",
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Expression(
+                                                            Call(
+                                                                Member(
+                                                                    Identifier(
+                                                                        [
+                                                                            "self",
+                                                                        ],
+                                                                    ),
+                                                                    "stop",
+                                                                ),
+                                                                [],
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Assignment {
+                                                            visibility: Private,
+                                                            mutable: false,
+                                                            parameter: "guess",
+                                                            value: Call(
+                                                                Identifier(
+                                                                    [
+                                                                        "eval",
+                                                                    ],
+                                                                ),
+                                                                [
+                                                                    Identifier(
+                                                                        [
+                                                                            "user_input",
+                                                                        ],
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        },
+                                                        Expression(
+                                                            If(
+                                                                Call(
+                                                                    Member(
+                                                                        Call(
+                                                                            Identifier(
+                                                                                [
+                                                                                    "__type_of__",
+                                                                                ],
+                                                                            ),
+                                                                            [
+                                                                                Identifier(
+                                                                                    [
+                                                                                        "guess",
+                                                                                    ],
+                                                                                ),
+                                                                            ],
+                                                                        ),
+                                                                        "equals",
+                                                                    ),
+                                                                    [
+                                                                        String(
+                                                                            "Number",
+                                                                        ),
+                                                                    ],
+                                                                ),
+                                                                Block(
+                                                                    [
+                                                                        Expression(
+                                                                            If(
+                                                                                Binary(
+                                                                                    Equal,
+                                                                                    Identifier(
+                                                                                        [
+                                                                                            "guess",
+                                                                                        ],
+                                                                                    ),
+                                                                                    Member(
+                                                                                        Identifier(
+                                                                                            [
+                                                                                                "self",
+                                                                                            ],
+                                                                                        ),
+                                                                                        "actual",
+                                                                                    ),
+                                                                                ),
+                                                                                Block(
+                                                                                    [
+                                                                                        Expression(
+                                                                                            Call(
+                                                                                                Identifier(
+                                                                                                    [
+                                                                                                        "println",
+                                                                                                    ],
+                                                                                                ),
+                                                                                                [
+                                                                                                    String(
+                                                                                                        "Congratulations, you win!",
+                                                                                                    ),
+                                                                                                ],
+                                                                                            ),
+                                                                                        ),
+                                                                                        Expression(
+                                                                                            Call(
+                                                                                                Member(
+                                                                                                    Identifier(
+                                                                                                        [
+                                                                                                            "self",
+                                                                                                        ],
+                                                                                                    ),
+                                                                                                    "stop",
+                                                                                                ),
+                                                                                                [],
+                                                                                            ),
+                                                                                        ),
+                                                                                    ],
+                                                                                    Tuple(
+                                                                                        [],
+                                                                                    ),
+                                                                                ),
+                                                                                If(
+                                                                                    Binary(
+                                                                                        GT,
+                                                                                        Identifier(
+                                                                                            [
+                                                                                                "guess",
+                                                                                            ],
+                                                                                        ),
+                                                                                        Member(
+                                                                                            Identifier(
+                                                                                                [
+                                                                                                    "self",
+                                                                                                ],
+                                                                                            ),
+                                                                                            "actual",
+                                                                                        ),
+                                                                                    ),
+                                                                                    Block(
+                                                                                        [
+                                                                                            Expression(
+                                                                                                Call(
+                                                                                                    Identifier(
+                                                                                                        [
+                                                                                                            "println",
+                                                                                                        ],
+                                                                                                    ),
+                                                                                                    [
+                                                                                                        String(
+                                                                                                            "Too high.",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                ),
+                                                                                            ),
+                                                                                            Reassignment {
+                                                                                                location: Member(
+                                                                                                    Identifier(
+                                                                                                        [
+                                                                                                            "self",
+                                                                                                        ],
+                                                                                                    ),
+                                                                                                    "guesses",
+                                                                                                ),
+                                                                                                value: Binary(
+                                                                                                    Minus,
+                                                                                                    Member(
+                                                                                                        Identifier(
+                                                                                                            [
+                                                                                                                "self",
+                                                                                                            ],
+                                                                                                        ),
+                                                                                                        "guesses",
+                                                                                                    ),
+                                                                                                    Float(
+                                                                                                        1.0,
+                                                                                                    ),
+                                                                                                ),
+                                                                                            },
+                                                                                        ],
+                                                                                        Tuple(
+                                                                                            [],
+                                                                                        ),
+                                                                                    ),
+                                                                                    Block(
+                                                                                        [
+                                                                                            Expression(
+                                                                                                Call(
+                                                                                                    Identifier(
+                                                                                                        [
+                                                                                                            "println",
+                                                                                                        ],
+                                                                                                    ),
+                                                                                                    [
+                                                                                                        String(
+                                                                                                            "Too low.",
+                                                                                                        ),
+                                                                                                    ],
+                                                                                                ),
+                                                                                            ),
+                                                                                            Reassignment {
+                                                                                                location: Member(
+                                                                                                    Identifier(
+                                                                                                        [
+                                                                                                            "self",
+                                                                                                        ],
+                                                                                                    ),
+                                                                                                    "guesses",
+                                                                                                ),
+                                                                                                value: Binary(
+                                                                                                    Minus,
+                                                                                                    Member(
+                                                                                                        Identifier(
+                                                                                                            [
+                                                                                                                "self",
+                                                                                                            ],
+                                                                                                        ),
+                                                                                                        "guesses",
+                                                                                                    ),
+                                                                                                    Float(
+                                                                                                        1.0,
+                                                                                                    ),
+                                                                                                ),
+                                                                                            },
+                                                                                        ],
+                                                                                        Tuple(
+                                                                                            [],
+                                                                                        ),
+                                                                                    ),
+                                                                                ),
+                                                                            ),
+                                                                        ),
+                                                                    ],
+                                                                    Tuple(
+                                                                        [],
+                                                                    ),
+                                                                ),
+                                                                Block(
+                                                                    [
+                                                                        Expression(
+                                                                            Call(
+                                                                                Identifier(
+                                                                                    [
+                                                                                        "println",
+                                                                                    ],
+                                                                                ),
+                                                                                [
+                                                                                    String(
+                                                                                        "Please guess a number.",
+                                                                                    ),
+                                                                                ],
+                                                                            ),
+                                                                        ),
+                                                                    ],
+                                                                    Tuple(
+                                                                        [],
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+            ],
             children: [],
         },
         Module {
@@ -850,123 +1588,19 @@ Module {
         Module {
             identifier: "main",
             body: [
-                Assignment {
-                    visibility: Public,
-                    mutable: false,
-                    parameter: "Fraction",
-                    value: Call(
-                        Identifier(
-                            [
-                                "Object",
-                            ],
-                        ),
-                        [],
-                    ),
-                },
-                FunctionDeclaration {
-                    visibility: Public,
-                    identifier: "gcd",
-                    parameters: [
-                        "a",
-                        "b",
+                Import {
+                    path: [
+                        "example",
+                        "play_game",
                     ],
-                    body: If(
-                        Binary(
-                            Equal,
-                            Identifier(
-                                [
-                                    "b",
-                                ],
-                            ),
-                            Float(
-                                0.0,
-                            ),
-                        ),
-                        Identifier(
-                            [
-                                "a",
-                            ],
-                        ),
-                        Call(
-                            Identifier(
-                                [
-                                    "main",
-                                    "gcd",
-                                ],
-                            ),
-                            [
-                                Identifier(
-                                    [
-                                        "b",
-                                    ],
-                                ),
-                                Binary(
-                                    Mod,
-                                    Identifier(
-                                        [
-                                            "a",
-                                        ],
-                                    ),
-                                    Identifier(
-                                        [
-                                            "b",
-                                        ],
-                                    ),
-                                ),
-                            ],
-                        ),
-                    ),
+                    alias: "start",
                 },
-                FunctionDeclaration {
-                    visibility: Public,
-                    identifier: "factorial",
-                    parameters: [
-                        "x",
+                Import {
+                    path: [
+                        "io",
+                        "println",
                     ],
-                    body: If(
-                        Binary(
-                            LT,
-                            Identifier(
-                                [
-                                    "x",
-                                ],
-                            ),
-                            Float(
-                                1.0,
-                            ),
-                        ),
-                        Float(
-                            1.0,
-                        ),
-                        Binary(
-                            Times,
-                            Identifier(
-                                [
-                                    "x",
-                                ],
-                            ),
-                            Call(
-                                Identifier(
-                                    [
-                                        "self",
-                                    ],
-                                ),
-                                [
-                                    Binary(
-                                        Minus,
-                                        Identifier(
-                                            [
-                                                "x",
-                                            ],
-                                        ),
-                                        Float(
-                                            1.0,
-                                        ),
-                                    ),
-                                ],
-                            ),
-                        ),
-                    ),
+                    alias: "println",
                 },
                 FunctionDeclaration {
                     visibility: Public,
@@ -977,34 +1611,54 @@ Module {
                             Assignment {
                                 visibility: Private,
                                 mutable: false,
-                                parameter: "fract",
+                                parameter: "list",
                                 value: Call(
-                                    Identifier(
-                                        [
-                                            "Fraction",
-                                        ],
+                                    Member(
+                                        Call(
+                                            Member(
+                                                Call(
+                                                    Identifier(
+                                                        [
+                                                            "iter",
+                                                            "Range",
+                                                        ],
+                                                    ),
+                                                    [
+                                                        Float(
+                                                            1.0,
+                                                        ),
+                                                        Float(
+                                                            100.0,
+                                                        ),
+                                                    ],
+                                                ),
+                                                "map",
+                                            ),
+                                            [
+                                                Lambda(
+                                                    [
+                                                        "x",
+                                                    ],
+                                                    None,
+                                                ),
+                                            ],
+                                        ),
+                                        "collect",
                                     ),
-                                    [
-                                        Float(
-                                            4.0,
-                                        ),
-                                        Float(
-                                            8.0,
-                                        ),
-                                    ],
+                                    [],
                                 ),
                             },
                             Expression(
                                 Call(
                                     Identifier(
                                         [
-                                            "print",
+                                            "println",
                                         ],
                                     ),
                                     [
                                         Identifier(
                                             [
-                                                "fract",
+                                                "list",
                                             ],
                                         ),
                                     ],
@@ -1016,14 +1670,272 @@ Module {
                         ),
                     ),
                 },
+            ],
+            children: [],
+        },
+        Module {
+            identifier: "std",
+            body: [
+                Import {
+                    path: [
+                        "iter",
+                        "Range",
+                    ],
+                    alias: "Range",
+                },
                 Reassignment {
                     location: Member(
                         Identifier(
                             [
-                                "Fraction",
+                                "List",
                             ],
                         ),
-                        "simplify",
+                        "times",
+                    ),
+                    value: Lambda(
+                        [
+                            "num",
+                        ],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "list",
+                                    value: List(
+                                        [],
+                                    ),
+                                },
+                                For {
+                                    item: "_",
+                                    iterator: Call(
+                                        Identifier(
+                                            [
+                                                "Range",
+                                            ],
+                                        ),
+                                        [
+                                            Float(
+                                                0.0,
+                                            ),
+                                            Identifier(
+                                                [
+                                                    "num",
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                    body: [
+                                        For {
+                                            item: "x",
+                                            iterator: Identifier(
+                                                [
+                                                    "self",
+                                                ],
+                                            ),
+                                            body: [
+                                                Expression(
+                                                    Call(
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "list",
+                                                                ],
+                                                            ),
+                                                            "push",
+                                                        ),
+                                                        [
+                                                            Identifier(
+                                                                [
+                                                                    "x",
+                                                                ],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                            Identifier(
+                                [
+                                    "list",
+                                ],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "String",
+                            ],
+                        ),
+                        "equals",
+                    ),
+                    value: Lambda(
+                        [
+                            "other",
+                        ],
+                        If(
+                            Binary(
+                                Equal,
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "len",
+                                    ),
+                                    [],
+                                ),
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "other",
+                                            ],
+                                        ),
+                                        "len",
+                                    ),
+                                    [],
+                                ),
+                            ),
+                            Block(
+                                [
+                                    Assignment {
+                                        visibility: Private,
+                                        mutable: false,
+                                        parameter: "output",
+                                        value: Boolean(
+                                            true,
+                                        ),
+                                    },
+                                    For {
+                                        item: "pair",
+                                        iterator: Call(
+                                            Member(
+                                                Call(
+                                                    Member(
+                                                        Identifier(
+                                                            [
+                                                                "self",
+                                                            ],
+                                                        ),
+                                                        "char_codes",
+                                                    ),
+                                                    [],
+                                                ),
+                                                "zip",
+                                            ),
+                                            [
+                                                Call(
+                                                    Member(
+                                                        Identifier(
+                                                            [
+                                                                "other",
+                                                            ],
+                                                        ),
+                                                        "char_codes",
+                                                    ),
+                                                    [],
+                                                ),
+                                            ],
+                                        ),
+                                        body: [
+                                            Assignment {
+                                                visibility: Private,
+                                                mutable: false,
+                                                parameter: "a",
+                                                value: Index(
+                                                    Identifier(
+                                                        [
+                                                            "pair",
+                                                        ],
+                                                    ),
+                                                    Float(
+                                                        0.0,
+                                                    ),
+                                                ),
+                                            },
+                                            Assignment {
+                                                visibility: Private,
+                                                mutable: false,
+                                                parameter: "b",
+                                                value: Index(
+                                                    Identifier(
+                                                        [
+                                                            "pair",
+                                                        ],
+                                                    ),
+                                                    Float(
+                                                        1.0,
+                                                    ),
+                                                ),
+                                            },
+                                            Expression(
+                                                If(
+                                                    Binary(
+                                                        NotEqual,
+                                                        Identifier(
+                                                            [
+                                                                "a",
+                                                            ],
+                                                        ),
+                                                        Identifier(
+                                                            [
+                                                                "b",
+                                                            ],
+                                                        ),
+                                                    ),
+                                                    Block(
+                                                        [
+                                                            Reassignment {
+                                                                location: Identifier(
+                                                                    [
+                                                                        "output",
+                                                                    ],
+                                                                ),
+                                                                value: Boolean(
+                                                                    false,
+                                                                ),
+                                                            },
+                                                            Break,
+                                                        ],
+                                                        Tuple(
+                                                            [],
+                                                        ),
+                                                    ),
+                                                    None,
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ],
+                                Identifier(
+                                    [
+                                        "output",
+                                    ],
+                                ),
+                            ),
+                            Boolean(
+                                false,
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "String",
+                            ],
+                        ),
+                        "char_codes",
                     ),
                     value: Lambda(
                         [],
@@ -1032,328 +1944,63 @@ Module {
                                 Assignment {
                                     visibility: Private,
                                     mutable: false,
-                                    parameter: "g",
-                                    value: Call(
-                                        Identifier(
-                                            [
-                                                "gcd",
-                                            ],
-                                        ),
-                                        [
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "self",
-                                                    ],
-                                                ),
-                                                "num",
-                                            ),
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "self",
-                                                    ],
-                                                ),
-                                                "den",
-                                            ),
-                                        ],
-                                    ),
-                                },
-                                Reassignment {
-                                    location: Member(
-                                        Identifier(
-                                            [
-                                                "self",
-                                            ],
-                                        ),
-                                        "num",
-                                    ),
-                                    value: Binary(
-                                        Divide,
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "num",
-                                        ),
-                                        Identifier(
-                                            [
-                                                "g",
-                                            ],
-                                        ),
-                                    ),
-                                },
-                                Reassignment {
-                                    location: Member(
-                                        Identifier(
-                                            [
-                                                "self",
-                                            ],
-                                        ),
-                                        "den",
-                                    ),
-                                    value: Binary(
-                                        Divide,
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "den",
-                                        ),
-                                        Identifier(
-                                            [
-                                                "g",
-                                            ],
-                                        ),
-                                    ),
-                                },
-                                Expression(
-                                    If(
-                                        Binary(
-                                            LT,
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "self",
-                                                    ],
-                                                ),
-                                                "den",
-                                            ),
-                                            Float(
-                                                0.0,
-                                            ),
-                                        ),
-                                        Block(
-                                            [
-                                                Reassignment {
-                                                    location: Member(
-                                                        Identifier(
-                                                            [
-                                                                "self",
-                                                            ],
-                                                        ),
-                                                        "num",
-                                                    ),
-                                                    value: Unary(
-                                                        Minus,
-                                                        Member(
-                                                            Identifier(
-                                                                [
-                                                                    "self",
-                                                                ],
-                                                            ),
-                                                            "num",
-                                                        ),
-                                                    ),
-                                                },
-                                                Reassignment {
-                                                    location: Member(
-                                                        Identifier(
-                                                            [
-                                                                "self",
-                                                            ],
-                                                        ),
-                                                        "den",
-                                                    ),
-                                                    value: Unary(
-                                                        Minus,
-                                                        Member(
-                                                            Identifier(
-                                                                [
-                                                                    "self",
-                                                                ],
-                                                            ),
-                                                            "den",
-                                                        ),
-                                                    ),
-                                                },
-                                            ],
-                                            Tuple(
-                                                [],
-                                            ),
-                                        ),
-                                        None,
-                                    ),
-                                ),
-                            ],
-                            Tuple(
-                                [],
-                            ),
-                        ),
-                    ),
-                },
-                Reassignment {
-                    location: Member(
-                        Identifier(
-                            [
-                                "Fraction",
-                            ],
-                        ),
-                        "new",
-                    ),
-                    value: Lambda(
-                        [
-                            "num",
-                            "den",
-                        ],
-                        Block(
-                            [
-                                Reassignment {
-                                    location: Member(
-                                        Identifier(
-                                            [
-                                                "self",
-                                            ],
-                                        ),
-                                        "num",
-                                    ),
+                                    parameter: "this",
                                     value: Identifier(
                                         [
-                                            "num",
+                                            "self",
                                         ],
-                                    ),
-                                },
-                                Reassignment {
-                                    location: Member(
-                                        Identifier(
-                                            [
-                                                "self",
-                                            ],
-                                        ),
-                                        "den",
-                                    ),
-                                    value: Identifier(
-                                        [
-                                            "den",
-                                        ],
-                                    ),
-                                },
-                                Expression(
-                                    Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "simplify",
-                                        ),
-                                        [],
-                                    ),
-                                ),
-                            ],
-                            Tuple(
-                                [],
-                            ),
-                        ),
-                    ),
-                },
-                Reassignment {
-                    location: Member(
-                        Identifier(
-                            [
-                                "Fraction",
-                            ],
-                        ),
-                        "plus",
-                    ),
-                    value: Lambda(
-                        [
-                            "other",
-                        ],
-                        Block(
-                            [
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "new_num",
-                                    value: Binary(
-                                        Plus,
-                                        Binary(
-                                            Times,
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "self",
-                                                    ],
-                                                ),
-                                                "num",
-                                            ),
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "other",
-                                                    ],
-                                                ),
-                                                "den",
-                                            ),
-                                        ),
-                                        Binary(
-                                            Times,
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "self",
-                                                    ],
-                                                ),
-                                                "den",
-                                            ),
-                                            Member(
-                                                Identifier(
-                                                    [
-                                                        "other",
-                                                    ],
-                                                ),
-                                                "num",
-                                            ),
-                                        ),
-                                    ),
-                                },
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "new_den",
-                                    value: Binary(
-                                        Times,
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "den",
-                                        ),
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "other",
-                                                ],
-                                            ),
-                                            "den",
-                                        ),
                                     ),
                                 },
                             ],
                             Call(
-                                Identifier(
-                                    [
-                                        "Fraction",
-                                    ],
-                                ),
-                                [
-                                    Identifier(
+                                Member(
+                                    Call(
+                                        Identifier(
+                                            [
+                                                "Range",
+                                            ],
+                                        ),
                                         [
-                                            "new_num",
+                                            Float(
+                                                0.0,
+                                            ),
+                                            Call(
+                                                Member(
+                                                    Identifier(
+                                                        [
+                                                            "self",
+                                                        ],
+                                                    ),
+                                                    "len",
+                                                ),
+                                                [],
+                                            ),
                                         ],
                                     ),
-                                    Identifier(
+                                    "map",
+                                ),
+                                [
+                                    Lambda(
                                         [
-                                            "new_den",
+                                            "index",
                                         ],
+                                        Call(
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "this",
+                                                    ],
+                                                ),
+                                                "char_code_at",
+                                            ),
+                                            [
+                                                Identifier(
+                                                    [
+                                                        "index",
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
                                     ),
                                 ],
                             ),
@@ -1364,74 +2011,400 @@ Module {
                     location: Member(
                         Identifier(
                             [
-                                "Fraction",
+                                "String",
                             ],
                         ),
-                        "to_string",
+                        "slice",
                     ),
                     value: Lambda(
-                        [],
-                        If(
-                            Binary(
-                                Equal,
-                                Member(
-                                    Identifier(
-                                        [
-                                            "self",
-                                        ],
-                                    ),
-                                    "den",
-                                ),
-                                Float(
-                                    1.0,
-                                ),
-                            ),
-                            Binary(
-                                Plus,
-                                String(
-                                    "",
-                                ),
-                                Member(
-                                    Identifier(
-                                        [
-                                            "self",
-                                        ],
-                                    ),
-                                    "num",
-                                ),
-                            ),
-                            Binary(
-                                Plus,
-                                Binary(
-                                    Plus,
-                                    Binary(
-                                        Plus,
-                                        String(
-                                            "",
+                        [
+                            "from",
+                            "to",
+                        ],
+                        Call(
+                            Member(
+                                Call(
+                                    Member(
+                                        Call(
+                                            Member(
+                                                Call(
+                                                    Member(
+                                                        Identifier(
+                                                            [
+                                                                "self",
+                                                            ],
+                                                        ),
+                                                        "iter",
+                                                    ),
+                                                    [],
+                                                ),
+                                                "skip",
+                                            ),
+                                            [
+                                                Identifier(
+                                                    [
+                                                        "from",
+                                                    ],
+                                                ),
+                                            ],
                                         ),
-                                        Member(
+                                        "take",
+                                    ),
+                                    [
+                                        Binary(
+                                            Minus,
                                             Identifier(
                                                 [
-                                                    "self",
+                                                    "to",
                                                 ],
                                             ),
-                                            "num",
+                                            Identifier(
+                                                [
+                                                    "from",
+                                                ],
+                                            ),
                                         ),
-                                    ),
-                                    String(
-                                        "/",
-                                    ),
+                                    ],
                                 ),
-                                Member(
-                                    Identifier(
+                                "sum",
+                            ),
+                            [],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "List",
+                            ],
+                        ),
+                        "slice",
+                    ),
+                    value: Lambda(
+                        [
+                            "from",
+                            "to",
+                        ],
+                        Call(
+                            Member(
+                                Call(
+                                    Member(
+                                        Call(
+                                            Member(
+                                                Call(
+                                                    Member(
+                                                        Identifier(
+                                                            [
+                                                                "self",
+                                                            ],
+                                                        ),
+                                                        "iter",
+                                                    ),
+                                                    [],
+                                                ),
+                                                "skip",
+                                            ),
+                                            [
+                                                Identifier(
+                                                    [
+                                                        "from",
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        "take",
+                                    ),
+                                    [
+                                        Binary(
+                                            Minus,
+                                            Identifier(
+                                                [
+                                                    "to",
+                                                ],
+                                            ),
+                                            Identifier(
+                                                [
+                                                    "from",
+                                                ],
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                                "collect",
+                            ),
+                            [],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "String",
+                            ],
+                        ),
+                        "split",
+                    ),
+                    value: Lambda(
+                        [
+                            "delim",
+                        ],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "strs",
+                                    value: List(
+                                        [],
+                                    ),
+                                },
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "cur",
+                                    value: String(
+                                        "",
+                                    ),
+                                },
+                                For {
+                                    item: "ch",
+                                    iterator: Identifier(
                                         [
                                             "self",
                                         ],
                                     ),
-                                    "den",
+                                    body: [
+                                        Expression(
+                                            If(
+                                                Call(
+                                                    Member(
+                                                        Identifier(
+                                                            [
+                                                                "ch",
+                                                            ],
+                                                        ),
+                                                        "equals",
+                                                    ),
+                                                    [
+                                                        Identifier(
+                                                            [
+                                                                "delim",
+                                                            ],
+                                                        ),
+                                                    ],
+                                                ),
+                                                Block(
+                                                    [
+                                                        Expression(
+                                                            If(
+                                                                Binary(
+                                                                    GT,
+                                                                    Call(
+                                                                        Member(
+                                                                            Identifier(
+                                                                                [
+                                                                                    "cur",
+                                                                                ],
+                                                                            ),
+                                                                            "len",
+                                                                        ),
+                                                                        [],
+                                                                    ),
+                                                                    Float(
+                                                                        0.0,
+                                                                    ),
+                                                                ),
+                                                                Block(
+                                                                    [
+                                                                        Expression(
+                                                                            Call(
+                                                                                Member(
+                                                                                    Identifier(
+                                                                                        [
+                                                                                            "strs",
+                                                                                        ],
+                                                                                    ),
+                                                                                    "push",
+                                                                                ),
+                                                                                [
+                                                                                    Identifier(
+                                                                                        [
+                                                                                            "cur",
+                                                                                        ],
+                                                                                    ),
+                                                                                ],
+                                                                            ),
+                                                                        ),
+                                                                        Reassignment {
+                                                                            location: Identifier(
+                                                                                [
+                                                                                    "cur",
+                                                                                ],
+                                                                            ),
+                                                                            value: String(
+                                                                                "",
+                                                                            ),
+                                                                        },
+                                                                    ],
+                                                                    Tuple(
+                                                                        [],
+                                                                    ),
+                                                                ),
+                                                                None,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Reassignment {
+                                                            location: Identifier(
+                                                                [
+                                                                    "cur",
+                                                                ],
+                                                            ),
+                                                            value: Binary(
+                                                                Plus,
+                                                                Identifier(
+                                                                    [
+                                                                        "cur",
+                                                                    ],
+                                                                ),
+                                                                Identifier(
+                                                                    [
+                                                                        "ch",
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ],
+                                },
+                                Expression(
+                                    If(
+                                        Binary(
+                                            GT,
+                                            Call(
+                                                Member(
+                                                    Identifier(
+                                                        [
+                                                            "cur",
+                                                        ],
+                                                    ),
+                                                    "len",
+                                                ),
+                                                [],
+                                            ),
+                                            Float(
+                                                0.0,
+                                            ),
+                                        ),
+                                        Block(
+                                            [
+                                                Expression(
+                                                    Call(
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "strs",
+                                                                ],
+                                                            ),
+                                                            "push",
+                                                        ),
+                                                        [
+                                                            Identifier(
+                                                                [
+                                                                    "cur",
+                                                                ],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ),
+                                            ],
+                                            Tuple(
+                                                [],
+                                            ),
+                                        ),
+                                        None,
+                                    ),
                                 ),
+                            ],
+                            Identifier(
+                                [
+                                    "strs",
+                                ],
                             ),
                         ),
+                    ),
+                },
+            ],
+            children: [],
+        },
+        Module {
+            identifier: "sys",
+            body: [
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "exit",
+                    parameters: [
+                        "code",
+                    ],
+                    body: Call(
+                        Identifier(
+                            [
+                                "__exit__",
+                            ],
+                        ),
+                        [
+                            Identifier(
+                                [
+                                    "code",
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "args",
+                    parameters: [],
+                    body: Call(
+                        Member(
+                            Call(
+                                Identifier(
+                                    [
+                                        "__argv__",
+                                    ],
+                                ),
+                                [],
+                            ),
+                            "iter",
+                        ),
+                        [],
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "time",
+                    parameters: [],
+                    body: Call(
+                        Identifier(
+                            [
+                                "__unix_time__",
+                            ],
+                        ),
+                        [],
                     ),
                 },
             ],
@@ -1456,7 +2429,7 @@ Module {
                 Assignment {
                     visibility: Public,
                     mutable: false,
-                    parameter: "ListIterator",
+                    parameter: "IndexIterator",
                     value: Call(
                         Identifier(
                             [
@@ -1535,6 +2508,19 @@ Module {
                     visibility: Private,
                     mutable: false,
                     parameter: "ZipIterator",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: false,
+                    parameter: "FunctionIterator",
                     value: Call(
                         Identifier(
                             [
@@ -1723,6 +2709,77 @@ Module {
                                     [
                                         "iter",
                                     ],
+                                ),
+                            ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        "iter",
+                    ),
+                    value: Lambda(
+                        [],
+                        Identifier(
+                            [
+                                "self",
+                            ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        "slice",
+                    ),
+                    value: Lambda(
+                        [
+                            "from",
+                            "to",
+                        ],
+                        Call(
+                            Member(
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "skip",
+                                    ),
+                                    [
+                                        Identifier(
+                                            [
+                                                "from",
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                "take",
+                            ),
+                            [
+                                Binary(
+                                    Minus,
+                                    Identifier(
+                                        [
+                                            "to",
+                                        ],
+                                    ),
+                                    Identifier(
+                                        [
+                                            "from",
+                                        ],
+                                    ),
                                 ),
                             ],
                         ),
@@ -2009,7 +3066,55 @@ Module {
                     location: Member(
                         Identifier(
                             [
-                                "ListIterator",
+                                "Iterator",
+                            ],
+                        ),
+                        "for_each",
+                    ),
+                    value: Lambda(
+                        [
+                            "func",
+                        ],
+                        Block(
+                            [
+                                For {
+                                    item: "x",
+                                    iterator: Identifier(
+                                        [
+                                            "self",
+                                        ],
+                                    ),
+                                    body: [
+                                        Expression(
+                                            Call(
+                                                Identifier(
+                                                    [
+                                                        "func",
+                                                    ],
+                                                ),
+                                                [
+                                                    Identifier(
+                                                        [
+                                                            "x",
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "IndexIterator",
                             ],
                         ),
                         "new",
@@ -2042,6 +3147,27 @@ Module {
                                                 "self",
                                             ],
                                         ),
+                                        "end",
+                                    ),
+                                    value: Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "list",
+                                                ],
+                                            ),
+                                            "len",
+                                        ),
+                                        [],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
                                         "index",
                                     ),
                                     value: Float(
@@ -2059,7 +3185,7 @@ Module {
                     location: Member(
                         Identifier(
                             [
-                                "ListIterator",
+                                "IndexIterator",
                             ],
                         ),
                         "peek",
@@ -2090,68 +3216,90 @@ Module {
                     location: Member(
                         Identifier(
                             [
-                                "ListIterator",
+                                "IndexIterator",
                             ],
                         ),
                         "next",
                     ),
                     value: Lambda(
                         [],
-                        Block(
-                            [
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "value",
-                                    value: Index(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "list",
-                                        ),
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "index",
-                                        ),
+                        If(
+                            Binary(
+                                LT,
+                                Member(
+                                    Identifier(
+                                        [
+                                            "self",
+                                        ],
                                     ),
-                                },
-                                Reassignment {
-                                    location: Member(
-                                        Identifier(
-                                            [
-                                                "self",
-                                            ],
-                                        ),
-                                        "index",
+                                    "index",
+                                ),
+                                Member(
+                                    Identifier(
+                                        [
+                                            "self",
+                                        ],
                                     ),
-                                    value: Binary(
-                                        Plus,
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "index",
-                                        ),
-                                        Float(
-                                            1.0,
-                                        ),
-                                    ),
-                                },
-                            ],
-                            Identifier(
-                                [
-                                    "value",
-                                ],
+                                    "end",
+                                ),
                             ),
+                            Block(
+                                [
+                                    Assignment {
+                                        visibility: Private,
+                                        mutable: false,
+                                        parameter: "value",
+                                        value: Index(
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "self",
+                                                    ],
+                                                ),
+                                                "list",
+                                            ),
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "self",
+                                                    ],
+                                                ),
+                                                "index",
+                                            ),
+                                        ),
+                                    },
+                                    Reassignment {
+                                        location: Member(
+                                            Identifier(
+                                                [
+                                                    "self",
+                                                ],
+                                            ),
+                                            "index",
+                                        ),
+                                        value: Binary(
+                                            Plus,
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "self",
+                                                    ],
+                                                ),
+                                                "index",
+                                            ),
+                                            Float(
+                                                1.0,
+                                            ),
+                                        ),
+                                    },
+                                ],
+                                Identifier(
+                                    [
+                                        "value",
+                                    ],
+                                ),
+                            ),
+                            None,
                         ),
                     ),
                 },
@@ -2169,7 +3317,7 @@ Module {
                         Call(
                             Identifier(
                                 [
-                                    "ListIterator",
+                                    "IndexIterator",
                                 ],
                             ),
                             [
@@ -2196,7 +3344,7 @@ Module {
                         Call(
                             Identifier(
                                 [
-                                    "ListIterator",
+                                    "IndexIterator",
                                 ],
                             ),
                             [
@@ -2296,16 +3444,11 @@ Module {
                                 },
                             ],
                             If(
-                                Binary(
-                                    Equal,
-                                    Identifier(
-                                        [
-                                            "value",
-                                        ],
-                                    ),
-                                    None,
+                                Identifier(
+                                    [
+                                        "value",
+                                    ],
                                 ),
-                                None,
                                 If(
                                     Call(
                                         Member(
@@ -2341,6 +3484,7 @@ Module {
                                         [],
                                     ),
                                 ),
+                                None,
                             ),
                         ),
                     ),
@@ -2432,14 +3576,10 @@ Module {
                                 },
                             ],
                             If(
-                                Binary(
-                                    NotEqual,
-                                    Identifier(
-                                        [
-                                            "value",
-                                        ],
-                                    ),
-                                    None,
+                                Identifier(
+                                    [
+                                        "value",
+                                    ],
                                 ),
                                 Call(
                                     Member(
@@ -2642,7 +3782,6 @@ Module {
                                     iterator: Call(
                                         Identifier(
                                             [
-                                                "iter",
                                                 "Range",
                                             ],
                                         ),
@@ -2987,6 +4126,92 @@ Module {
                         ),
                     ),
                 },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "FunctionIterator",
+                            ],
+                        ),
+                        "new",
+                    ),
+                    value: Lambda(
+                        [
+                            "state",
+                            "func",
+                        ],
+                        Block(
+                            [
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "func",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "func",
+                                        ],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "state",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "state",
+                                        ],
+                                    ),
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "FunctionIterator",
+                            ],
+                        ),
+                        "next",
+                    ),
+                    value: Lambda(
+                        [],
+                        Call(
+                            Member(
+                                Identifier(
+                                    [
+                                        "self",
+                                    ],
+                                ),
+                                "func",
+                            ),
+                            [
+                                Member(
+                                    Identifier(
+                                        [
+                                            "self",
+                                        ],
+                                    ),
+                                    "state",
+                                ),
+                            ],
+                        ),
+                    ),
+                },
             ],
             children: [],
         },
@@ -3031,14 +4256,13 @@ Module {
                         [],
                     ),
                 },
-                Assignment {
+                FunctionDeclaration {
                     visibility: Public,
-                    mutable: false,
-                    parameter: "DEFAULT_RNG",
-                    value: Call(
+                    identifier: "rng",
+                    parameters: [],
+                    body: Call(
                         Identifier(
                             [
-                                "rand",
                                 "Rng",
                             ],
                         ),
@@ -3046,7 +4270,8 @@ Module {
                             Call(
                                 Identifier(
                                     [
-                                        "unix_time",
+                                        "sys",
+                                        "time",
                                     ],
                                 ),
                                 [],
@@ -3256,6 +4481,54 @@ Module {
                                 ),
                             ],
                         ),
+                    ),
+                },
+            ],
+            children: [],
+        },
+        Module {
+            identifier: "io",
+            body: [
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "println",
+                    parameters: [
+                        "x",
+                    ],
+                    body: Call(
+                        Identifier(
+                            [
+                                "__print__",
+                            ],
+                        ),
+                        [
+                            Identifier(
+                                [
+                                    "x",
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+                FunctionDeclaration {
+                    visibility: Public,
+                    identifier: "input",
+                    parameters: [
+                        "prompt",
+                    ],
+                    body: Call(
+                        Identifier(
+                            [
+                                "__input__",
+                            ],
+                        ),
+                        [
+                            Identifier(
+                                [
+                                    "prompt",
+                                ],
+                            ),
+                        ],
                     ),
                 },
             ],

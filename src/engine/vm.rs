@@ -15,6 +15,12 @@ struct Capture {
     frames: Vec<HashSet<String>>,
 }
 
+macro_rules! is_type {
+    ($val:expr, $orig:ty, $ty:ty) => {
+        $val as $ty as $orig == $val
+    };
+}
+
 impl Capture {
     pub fn new() -> Capture {
         Capture { frames: Vec::new() }
@@ -133,9 +139,10 @@ impl Environment {
 pub struct Engine {
     instructions: Vec<Statement>,
     env: Environment,
-    is_looping: bool,
+    loop_depth: usize,
     path: Vec<String>,
     modules: HashMap<Vec<String>, Value>,
+    interned_strings: HashMap<String, Value>,
 }
 
 #[derive(Debug)]
@@ -178,7 +185,19 @@ impl EvalError {
 
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        use EvalError::*;
+        match self {
+            ParseError(err) => write!(f, "{}", err),
+            UndefinedError(ident) => write!(f, "identifier `{}` is undefined", ident),
+            TypeMismatchError(expected, found) => {
+                write!(f, "expected type `{}`, found `{}`", expected, found)
+            }
+            ArityMismatchError(expected, found) => {
+                write!(f, "expected {} args, found {}", expected, found)
+            }
+            KeyNotFoundError(key) => write!(f, "key `{}` not found in object", key),
+            InvalidStatement => write!(f, "invalid statement"),
+        }
     }
 }
 
@@ -191,10 +210,21 @@ impl Engine {
         Engine {
             instructions: Vec::new(),
             env: Environment::new(),
-            is_looping: false,
+            loop_depth: 0,
             path: Vec::new(),
             modules: HashMap::new(),
+            interned_strings: HashMap::new(),
         }
+    }
+
+    fn lookup_string(&mut self, s: impl AsRef<str>) -> EvalResult<Value> {
+        let key = s.as_ref();
+        let existing = self.interned_strings.get(key);
+        existing.map(|x| Ok(x.clone())).unwrap_or_else(|| {
+            let value = self.make_string(key)?;
+            self.interned_strings.insert(key.to_string(), value.clone());
+            Ok(value)
+        })
     }
 
     fn list_to_string(&mut self, list: Ptr<Vec<Value>>) -> EvalResult<String> {
@@ -228,14 +258,29 @@ impl Engine {
         s.push('{');
         let mut is_first = true;
 
-        for (key, value) in &obj.fields {
+        let proto_str = "proto".to_owned();
+
+        let proto = obj
+            .proto
+            .as_ref()
+            .map(|proto| (&proto_str, Value::Object(proto.clone())));
+
+        for (key, value) in obj
+            .fields
+            .iter()
+            .map(|(key, value)| (key, value.clone()))
+            .chain(proto.into_iter())
+        {
             if key != "type_name" {
                 if is_first {
                     is_first = false;
                 } else {
                     s.push_str(", ");
                 }
-                let value = self.value_to_string(value)?;
+                let value = match value {
+                    Value::Object(_) => "<Object>".to_owned(),
+                    other => self.value_to_string(&other)?,
+                };
                 s.push_str(key);
                 s.push_str(": ");
                 s.push_str(&value);
@@ -262,7 +307,19 @@ impl Engine {
             }
         });
 
-        obj_proto.define_method("get", |_, this, args| {
+        obj_proto.define_method("instance_of", |engine, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [Value::Object(of)]) => {
+                    Ok(Value::Boolean(Object::instance_of(this, Some(of))))
+                }
+                (Value::Object(_), [x]) => Err(EvalError::type_mismatch("Object", x.type_of())),
+                (Value::Object(_), xs) => Err(EvalError::arity_mismatch(1, xs.len())),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
+        obj_proto.define_method("index_get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (parent, [Value::String(s)]) => Object::get_field(parent, s),
@@ -274,7 +331,7 @@ impl Engine {
             }
         });
 
-        obj_proto.define_method("set", |_, this, args| {
+        obj_proto.define_method("index_get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::String(s), item]) => {
@@ -371,7 +428,7 @@ impl Engine {
         });
 
         // [].get(i)
-        list_proto.define_method("get", |_, this, args| {
+        list_proto.define_method("index_get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::Number(n)]) if is_usize(*n) => {
@@ -398,7 +455,7 @@ impl Engine {
         });
 
         // [].set(i, x)
-        list_proto.define_method("set", |_, this, args| {
+        list_proto.define_method("index_set", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::Number(n), item]) if is_usize(*n) => {
@@ -441,6 +498,22 @@ impl Engine {
             }
         });
 
+        list_proto.define_method("pop", |_, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), []) => match this.borrow().get("data") {
+                    Some(Value::List(vec)) => {
+                        let mut list = vec.borrow_mut();
+                        Ok(list.pop().unwrap_or_else(|| Value::None))
+                    }
+                    Some(other) => Err(EvalError::type_mismatch("List", other.type_of())),
+                    None => Err(EvalError::key_not_found("data")),
+                },
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+                (_, xs) => Err(EvalError::arity_mismatch(1, xs.len())),
+            }
+        });
+
         self.env
             .insert("List", Value::Object(ptr(list_proto.clone())));
 
@@ -453,6 +526,71 @@ impl Engine {
                 (Value::Object(obj), 0) => {
                     obj.borrow_mut().set("data", Value::String("".into()));
                     Ok(Value::None)
+                }
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
+        str_proto.define_method("len", |_, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => {
+                    if let Some(val) = obj.borrow().get("data") {
+                        match val {
+                            Value::String(s) => Ok(Value::Number(s.len() as f64)),
+                            other => Err(EvalError::type_mismatch("String", other.type_of())),
+                        }
+                    } else {
+                        Err(EvalError::key_not_found("data"))
+                    }
+                }
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
+
+        str_proto.define_method("char_code_at", |_, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args) {
+                (Value::Object(this), [Value::Number(n)]) if is_usize(*n) => {
+                    let n = *n as usize;
+                    match this.borrow().get("data") {
+                        Some(Value::String(s)) => {
+                            if n < s.len() {
+                                let ch = s.chars().skip(n).next().unwrap();
+                                Ok(Value::Number(ch as u32 as f64))
+                            } else {
+                                Ok(Value::None)
+                            }
+                        }
+                        Some(other) => Err(EvalError::type_mismatch("List", other.type_of())),
+                        None => Err(EvalError::key_not_found("data")),
+                    }
+                }
+                (first, [second]) => Err(EvalError::type_mismatch(
+                    "(Object, Number)",
+                    format!("({}, {})", first.type_of(), second.type_of()),
+                )),
+                (_, xs) => Err(EvalError::arity_mismatch(1, xs.len())),
+            }
+        });
+
+        str_proto.define_method("trim", |engine, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(obj), 0) => {
+                    if let Some(val) = obj.borrow().get("data") {
+                        match val {
+                            Value::String(s) => {
+                                let new_str = s.trim().to_owned();
+                                engine.make_string(new_str)
+                            }
+                            other => Err(EvalError::type_mismatch("String", other.type_of())),
+                        }
+                    } else {
+                        Err(EvalError::key_not_found("data"))
+                    }
                 }
                 (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
                 (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
@@ -538,6 +676,11 @@ impl Engine {
         self.create_backed_object("String", buf)
     }
 
+    fn make_list(&mut self, vals: Vec<Value>) -> EvalResult<Value> {
+        let buf = Value::List(ptr(vals));
+        self.create_backed_object("List", buf)
+    }
+
     fn get_proto(&self, name: impl AsRef<str>) -> EvalResult<Ptr<Object>> {
         match self.env.get(name.as_ref()) {
             Some(Value::Object(obj)) => Ok(obj.clone()),
@@ -578,12 +721,21 @@ impl Engine {
     pub fn init(&mut self) -> EvalResult<()> {
         self.define_math_built_ins();
 
-        self.define_built_in("type_of", |_, _, args| match args {
-            [arg] => Ok(Value::String(arg.type_of().into())),
+        self.define_built_in("__exit__", |_, _, args| match args {
+            [Value::Number(n)] if is_type!(*n, f64, i32) => {
+                let n = *n as i32;
+                std::process::exit(n);
+            }
+            [other] => Err(EvalError::type_mismatch("Number", other.type_of())),
             xs => Err(EvalError::arity_mismatch(1, xs.len())),
         });
 
-        self.define_built_in("print", |engine, _, args| {
+        self.define_built_in("__type_of__", |engine, _, args| match args {
+            [arg] => engine.make_string(arg.type_of()),
+            xs => Err(EvalError::arity_mismatch(1, xs.len())),
+        });
+
+        self.define_built_in("__print__", |engine, _, args| {
             for arg in args {
                 engine.print_value(arg)?;
                 print!(" ");
@@ -592,7 +744,26 @@ impl Engine {
             Ok(Value::None)
         });
 
-        self.define_built_in("push_list", |_, _, args| {
+        self.define_built_in("__input__", |engine, _, args| {
+            use std::io::{self, prelude::*};
+
+            match args {
+                [value] => {
+                    let s = engine.value_to_string(value)?;
+                    print!("{}", s);
+                    io::stdout().flush().expect("io error");
+                }
+                [] => {}
+                xs => return Err(EvalError::arity_mismatch(1, xs.len())),
+            }
+
+            let mut buf = String::new();
+            io::stdin().read_line(&mut buf).expect("io error");
+
+            engine.make_string(buf)
+        });
+
+        self.define_built_in("__push_list__", |_, _, args| {
             match args.clone() {
                 [Value::List(vec), item] => {
                     // Push to list
@@ -605,7 +776,7 @@ impl Engine {
             }
         });
 
-        self.define_built_in("get_list", |_, _, args| {
+        self.define_built_in("__get_list__", |_, _, args| {
             match args.clone() {
                 [Value::List(vec), Value::Number(n)] if is_usize(*n) => {
                     // Push to list
@@ -619,7 +790,7 @@ impl Engine {
             }
         });
 
-        self.define_built_in("set_list", |_, _, args| match args.clone() {
+        self.define_built_in("__set_list__", |_, _, args| match args.clone() {
             [Value::List(vec), Value::Number(n), value] if is_usize(*n) => {
                 // Push to list
                 let mut list = vec.borrow_mut();
@@ -635,7 +806,7 @@ impl Engine {
             other => Err(EvalError::arity_mismatch(2, other.len())),
         });
 
-        self.define_built_in("len_list", |_, _, args| match args {
+        self.define_built_in("__len_list__", |_, _, args| match args {
             [Value::List(vec)] => {
                 // Push to list
                 let list = vec.borrow();
@@ -645,7 +816,7 @@ impl Engine {
             other => Err(EvalError::arity_mismatch(2, other.len())),
         });
 
-        self.define_built_in("unix_time", |_, _, args| match args.len() {
+        self.define_built_in("__unix_time__", |_, _, args| match args.len() {
             0 => {
                 use std::time::{SystemTime, UNIX_EPOCH};
                 let time = SystemTime::now()
@@ -656,24 +827,21 @@ impl Engine {
             n => Err(EvalError::arity_mismatch(0, n)),
         });
 
-        self.define_built_in("argv", |engine, _, args| match args.len() {
+        self.define_built_in("__argv__", |engine, _, args| match args.len() {
             0 => {
                 use std::env;
 
-                let args: Vec<_> = env::args().map(|arg| Value::String(arg.into())).collect();
-                let list = Value::List(ptr(args));
-                let mut value = Object::new();
-                let proto = engine.get_proto("List")?;
-                value.set_proto(proto);
-                value.set("data", list);
-
-                Ok(Value::Object(ptr(value)))
+                let args: Vec<_> = env::args()
+                    .map(|arg| engine.make_string(arg))
+                    .collect::<Result<_, _>>()?;
+                engine.make_list(args)
             }
             n => Err(EvalError::arity_mismatch(0, n)),
         });
 
-        self.define_built_in("eval", |engine, _, args| match args {
-            [Value::String(s)] => {
+        self.define_built_in("__eval__", |engine, _, args| match args {
+            [value] => {
+                let s = engine.value_to_string(value)?;
                 // Parse string
                 let lexer = Lexer::new(s.as_ref());
                 let mut parser = Parser::new(lexer);
@@ -681,21 +849,25 @@ impl Engine {
                 let expr = parser.parse_expr()?;
                 engine.evaluate(&expr)
             }
-            [x] => Err(EvalError::type_mismatch("String", x.type_of())),
             xs => Err(EvalError::arity_mismatch(1, xs.len())),
         });
+
+        self.env
+            .insert("__PI__", Value::Number(std::f64::consts::PI));
+        self.env.insert("__E__", Value::Number(std::f64::consts::E));
 
         self.init_types()
     }
 
-    #[inline]
-    fn start_loop(&mut self) {
-        self.is_looping = true;
+    fn start_loop(&mut self) -> usize {
+        self.loop_depth += 1;
+        return self.loop_depth;
     }
 
-    #[inline]
     fn stop_loop(&mut self) {
-        self.is_looping = false;
+        if self.loop_depth > 0 {
+            self.loop_depth -= 1;
+        }
     }
 
     pub fn define_built_in<F>(&mut self, name: impl Into<String>, built_in: F)
@@ -801,6 +973,9 @@ impl Engine {
         // println!("extract: {:?}", expression);
         // println!("ignore: {:?}", ignore);
         match expression {
+            Member(obj, _) => {
+                self.extract_closure_to_frame(closure, obj, ignore)?;
+            }
             Identifier(path) => {
                 if path.len() == 1 {
                     let ident = &path[0];
@@ -813,8 +988,7 @@ impl Engine {
                             .map_err(|err| {
                                 // println!("env: {:?}", self.env);
                                 err
-                            })
-                            .and_then(|value| self.evaluate_value(&value))?;
+                            })?;
                         closure.insert(ident.into(), value);
                     }
                 }
@@ -907,13 +1081,13 @@ impl Engine {
         let main = self.find_module_declaration(&main_path)?;
 
         match main {
-            Value::Function(f) => {
-                // println!("calling main");
-                // println!("{:?}", f.capture);
-                self.call(&f, &[])
-            }
+            Value::Function(f) => self.call(&f, &[]),
             other => Err(EvalError::type_mismatch("Function", other.type_of())),
         }
+    }
+
+    fn is_looping(&self, depth: usize) -> bool {
+        self.loop_depth >= depth
     }
 
     pub fn execute(&mut self, stmt: &Statement) -> EvalResult<()> {
@@ -923,10 +1097,14 @@ impl Engine {
                 iterator,
                 body,
             } => {
-                let iterator = self.evaluate(iterator)?;
-                self.start_loop();
+                let mut iterator = self.evaluate(iterator)?;
+                if !self.has_field(&iterator, "next") {
+                    iterator = self.call_method(&iterator, "iter", &[])?;
+                }
 
-                while self.is_looping {
+                let depth = self.start_loop();
+
+                while self.is_looping(depth) {
                     self.env.descend();
 
                     // Get next value from iterator
@@ -958,7 +1136,9 @@ impl Engine {
                     self.env.ascend();
                 }
 
-                self.stop_loop();
+                if self.loop_depth > depth {
+                    self.stop_loop();
+                }
                 Ok(())
             }
 
@@ -1031,7 +1211,7 @@ impl Engine {
                         let obj = self.evaluate(obj)?;
                         let key = self.evaluate(field)?;
                         let args = [key, self.evaluate(value)?];
-                        self.call_method(&obj, "set", &args);
+                        self.call_method(&obj, "index_set", &args);
                         Ok(())
                     }
                     Expression::Identifier(ident) if ident.len() == 1 => {
@@ -1058,8 +1238,8 @@ impl Engine {
             }
             Statement::Loop { body } => {
                 self.env.descend();
-                self.start_loop();
-                while self.is_looping {
+                let depth = self.start_loop();
+                while self.is_looping(depth) {
                     for statement in body {
                         if let Err(e) = self.execute(statement) {
                             self.stop_loop();
@@ -1074,8 +1254,8 @@ impl Engine {
             }
             Statement::While { condition, body } => {
                 self.env.descend();
-                self.start_loop();
-                while self.is_looping {
+                let depth = self.start_loop();
+                while self.is_looping(depth) {
                     // Check condition
                     let cond = self.evaluate(condition)?;
                     let cond = match cond {
@@ -1113,6 +1293,10 @@ impl Engine {
                 Value::Number(n) => Ok(Value::Number(-n)),
                 x => Err(EvalError::type_mismatch("Number", x.type_of())),
             },
+            UnaryOp::Not => match value {
+                Value::Boolean(b) => Ok(Value::Boolean(!b)),
+                x => Err(EvalError::type_mismatch("Boolean", x.type_of())),
+            },
             op => {
                 println!("{:?} is not yet supported.", op);
                 todo!()
@@ -1140,14 +1324,34 @@ impl Engine {
             },
             BinaryOp::Minus => match (a, b) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a - *b)),
+                (obj @ Value::Object(_), addend) => {
+                    // Use object's `plus` method
+                    self.call_method(obj, "minus", &[addend.clone()])
+                }
+                (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
+            },
+            BinaryOp::Exponentiate => match (a, b) {
+                (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a.powf(*b))),
+                (obj @ Value::Object(_), addend) => {
+                    // Use object's `plus` method
+                    self.call_method(obj, "exponentiate", &[addend.clone()])
+                }
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
             BinaryOp::Times => match (a, b) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a * *b)),
+                (obj @ Value::Object(_), addend) => {
+                    // Use object's `plus` method
+                    self.call_method(obj, "times", &[addend.clone()])
+                }
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
             BinaryOp::Divide => match (a, b) {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Number(*a / *b)),
+                (obj @ Value::Object(_), addend) => {
+                    // Use object's `plus` method
+                    self.call_method(obj, "divide", &[addend.clone()])
+                }
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
             BinaryOp::Mod => match (a, b) {
@@ -1170,7 +1374,22 @@ impl Engine {
                 (Value::Number(a), Value::Number(b)) => Ok(Value::Boolean(*a >= *b)),
                 (a, b) => Err(EvalError::type_mismatch(a.type_of(), b.type_of())),
             },
-            BinaryOp::Equal => Ok(Value::Boolean(a == b)),
+            BinaryOp::Equal => match (a, b) {
+                // Check for reference equality
+                (Value::Object(a), Value::Object(b)) if ptr_eq(a.clone(), b.clone()) => {
+                    Ok(Value::Boolean(true))
+                }
+
+                // Otherwise, if operand is an object, call `equal`
+                (obj @ Value::Object(_), other) => {
+                    // Use object's `equals` method
+                    let res = self
+                        .try_call_method(obj, "equals", &[other.clone()])?
+                        .unwrap_or_else(|| Value::Boolean(false));
+                    Ok(res)
+                }
+                (a, b) => Ok(Value::Boolean(a == b)),
+            },
             BinaryOp::NotEqual => Ok(Value::Boolean(a != b)),
             _ => todo!(),
         }
@@ -1300,10 +1519,7 @@ impl Engine {
 
                 Ok(value)
             }
-            Expression::String(s) => {
-                let buffer = Value::String(s.to_string().into());
-                self.create_backed_object("String", buffer)
-            }
+            Expression::String(s) => self.lookup_string(s),
             Expression::Boolean(b) => Ok(Value::Boolean(*b)),
             Expression::Int(n) => Ok(Value::Number(*n as f64)),
             Expression::Float(n) => Ok(Value::Number(*n)),
@@ -1312,7 +1528,7 @@ impl Engine {
             Expression::Index(parent, field) => {
                 let obj = self.evaluate(parent)?;
                 let args = [self.evaluate(field)?];
-                self.call_method(&obj, "get", &args)
+                self.call_method(&obj, "index_get", &args)
             }
             other => {
                 println!("unimplemented: {:?}", other);
@@ -1396,6 +1612,34 @@ impl Engine {
         Ok(())
     }
 
+    pub fn has_field(&mut self, parent: &Value, field: impl AsRef<str>) -> bool {
+        Object::get_field(parent, field).is_ok()
+    }
+
+    pub fn try_call_method(
+        &mut self,
+        parent: &Value,
+        method: impl AsRef<str>,
+        args: &[Value],
+    ) -> EvalResult<Option<Value>> {
+        let method = Object::try_get_field(parent, method)?;
+        match method {
+            Some(Value::Function(f)) => {
+                let res = self.call(&f, args)?;
+                Ok(Some(res))
+            }
+            Some(Value::Object(obj)) => {
+                let mut new_obj = Object::new();
+                new_obj.set_proto(obj.clone());
+                let new_obj = Value::Object(ptr(new_obj));
+                self.call_method(&new_obj, "new", &args);
+                Ok(Some(new_obj))
+            }
+            Some(other) => Err(EvalError::type_mismatch("Function", other.type_of())),
+            None => Ok(None),
+        }
+    }
+
     pub fn call_method(
         &mut self,
         parent: &Value,
@@ -1405,6 +1649,13 @@ impl Engine {
         let method = Object::get_field(parent, method)?;
         match method {
             Value::Function(f) => self.call(&f, args),
+            Value::Object(obj) => {
+                let mut new_obj = Object::new();
+                new_obj.set_proto(obj.clone());
+                let new_obj = Value::Object(ptr(new_obj));
+                self.call_method(&new_obj, "new", &args);
+                Ok(new_obj)
+            }
             other => Err(EvalError::type_mismatch("Function", other.type_of())),
         }
     }
@@ -1445,7 +1696,7 @@ pub enum Value {
     None,
 }
 
-fn ptr_eq<T>(a: &Ptr<T>, b: &Ptr<T>) -> bool {
+fn ptr_eq<T>(a: Ptr<T>, b: Ptr<T>) -> bool {
     let a = a.as_ref() as *const _;
     let b = b.as_ref() as *const _;
     a == b
@@ -1459,8 +1710,8 @@ impl PartialEq for Value {
             (Boolean(a), Boolean(b)) => a == b,
             (String(a), String(b)) => a == b,
             (Symbol(a), Symbol(b)) => a == b,
-            (Object(a), Object(b)) => ptr_eq(a, b),
-            (List(a), List(b)) => ptr_eq(a, b),
+            (Object(a), Object(b)) => ptr_eq(a.clone(), b.clone()),
+            (List(a), List(b)) => ptr_eq(a.clone(), b.clone()),
             (Function(_), Function(_)) => false,
             (Link(_), Link(_)) => false,
             (None, None) => true,
@@ -1487,6 +1738,19 @@ impl Object {
         self.proto = Some(proto);
     }
 
+    pub fn try_get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Option<Value>> {
+        match parent {
+            Value::Object(obj) => Ok(obj.borrow().get(key.as_ref()).map(|field| match field {
+                Value::Function(mut f) => {
+                    f.self_param = Some(Rc::new(parent.clone()));
+                    Value::Function(f)
+                }
+                other => other,
+            })),
+            other => Err(EvalError::type_mismatch("Object", other.type_of())),
+        }
+    }
+
     pub fn get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Value> {
         match parent {
             Value::Object(obj) => obj
@@ -1502,6 +1766,17 @@ impl Object {
                 }),
             other => Err(EvalError::type_mismatch("Object", other.type_of())),
         }
+    }
+
+    pub fn obj_has_field(parent: Value, key: impl AsRef<str>) -> EvalResult<bool> {
+        match parent {
+            Value::Object(obj) => Ok(obj.borrow().get(key.as_ref()).is_some()),
+            other => Err(EvalError::type_mismatch("Object", other.type_of())),
+        }
+    }
+
+    pub fn has_field(&self, key: impl AsRef<str>) -> bool {
+        self.get(key).is_some()
     }
 
     pub fn get(&self, key: impl AsRef<str>) -> Option<Value> {
@@ -1527,6 +1802,18 @@ impl Object {
         };
         let function = Value::Function(function);
         self.set(name, function);
+    }
+
+    pub fn instance_of(obj: &Ptr<Object>, of: Option<&Ptr<Object>>) -> bool {
+        if let Some(of) = of {
+            if !ptr_eq(obj.clone(), of.clone()) {
+                Object::instance_of(obj, of.borrow().proto.as_ref())
+            } else {
+                true
+            }
+        } else {
+            false
+        }
     }
 }
 

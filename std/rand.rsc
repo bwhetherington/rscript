@@ -2,7 +2,7 @@ let A = 1664525;
 let C = 1013904223;
 let M = 4294967296;
 
-pub let Rng = iter::Iterator();
+pub let Rng = std::iter::Iterator();
 
 Rng.new = |seed| {
   self.current = seed % M;
@@ -16,4 +16,4 @@ Rng.next = || {
 
 Rng.ints = |min, max| self.map(|r| floor(r * (max - min)) + min);
 
-pub let DEFAULT_RNG = rand::Rng(unix_time());
+pub fn rng() = Rng(std::sys::time());
