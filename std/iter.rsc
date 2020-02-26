@@ -1,66 +1,65 @@
-pub let Iterator = Object();
+pub class Iterator {
+  op next() = None;
 
-# Base implementations
-Iterator.next = || None;
-Iterator.filter = |pred| FilterIterator(self, pred);
-Iterator.map = |map| MapIterator(self, map);
-Iterator.take = |num| TakeIterator(self, num);
-Iterator.skip = |num| SkipIterator(self, num);
-Iterator.zip = |iter| ZipIterator(self, iter);
-Iterator.iter = || self;
-Iterator.slice = |from, to| self.skip(from).take(to - from);
+  fn filter(pred) = FilterIterator(self, pred);
 
-Iterator.list = || {
-  let list = [];
-  let value = self.next();
-  while value != None {
-    list.push(value);
-    value = self.next();
+  fn map(f) = MapIterator(self, f);
+
+  fn take(count) = TakeIterator(self, count);
+
+  fn skip(count) = SkipIterator(self, count);
+
+  fn zip(iter) = ZipIterator(self, iter);
+
+  fn iter() = self;
+
+  fn slice(from, to) = self.skip(from).take(to - from);
+
+  fn list() = {
+    let list = [];
+    for value in self do {
+      list.push(value);
+    };
+    list
   };
-  list
-};
 
-Iterator.fold = |acc, func| {
-  for x in self {
-    acc = func(acc, x);
+  fn fold(acc, func) = {
+    for x in self do {
+      acc = func(acc, x);
+    };
+    acc
   };
-  acc
-};
 
-Iterator.reduce = |func| {
-  let acc = self.next();
-  for x in self {
-    acc = func(acc, x);
+  fn reduce(func) = {
+    let acc = self.next();
+    self.fold(acc, func)
   };
-  acc
-};
 
-Iterator.sum = || self.reduce(|acc, x| acc + x);
+  fn sum() = self.fold(0, |a, b| a + b);
 
-Iterator.for_each = |func| {
-  for x in self {
-    func(x);
+  fn for_each(func) = {
+    for x in self do {
+      func(x);
+    };
   };
 };
 
-pub let IndexIterator = Iterator();
+class IndexIterator : Iterator {
+  op new(list) = {
+    self.list = list;
+    self.end = list.len();
+    self.index = 0;
+  };
 
-IndexIterator.new = |list| {
-  self.list = list;
-  self.end = list.len();
-  self.index = 0;
-};
+  op next() = {
+    if self.index < self.end then {
+      let value = self.list[self.index];
+      self.index = self.index + 1;
+      value
+    } 
+  };
 
-IndexIterator.peek = || {
-  self.list[self.index]
-};
-
-IndexIterator.next = || {
-  if self.index < self.end then {
-    let value = self.list[self.index];
-    self.index = self.index + 1;
-    value
-  }
+  fn peek() = self.list[self.index];
 };
 
 List.iter = || {
@@ -71,104 +70,97 @@ String.iter = || {
   IndexIterator(self)
 };
 
-pub let FilterIterator = Iterator();
+class FilterIterator : Iterator {
+  op new(iter, pred) = {
+    self.iter = iter;
+    self.pred = pred;
+  };
 
-FilterIterator.new = |iter, pred| {
-  self.iter = iter;
-  self.pred = pred;
-};
-
-FilterIterator.next = || {
-  let value = self.iter.next();
-  if value then {
-    if self.pred(value) then {
-      value
-    } else {
-      self.next()
+  op next() = {
+    let value = self.iter.next();
+    if value then {
+      if self.pred(value) then {
+        value
+      } else {
+        self.next()
+      }
     }
-  }
-};
-
-pub let MapIterator = Iterator();
-
-MapIterator.new = |iter, map| {
-  self.iter = iter;
-  self.map = map;
-};
-
-MapIterator.next = || {
-  let value = self.iter.next();
-  if value then {
-    self.map(value)
-  }
-};
-
-pub let TakeIterator = Iterator();
-
-TakeIterator.new = |iter, num| {
-  self.iter = iter;
-  self.max = num;
-  self.cur = 0;
-};
-
-TakeIterator.next = || {
-  if self.cur < self.max then {
-    self.cur = self.cur + 1;
-    self.iter.next()
-  } else {
-    None
-  }
-};
-
-pub let SkipIterator = Iterator();
-
-SkipIterator.new = |iter, num| {
-  self.iter = iter;
-  for i in Range(0, num) {
-    self.iter.next();
   };
 };
 
-SkipIterator.next = || self.iter.next();
+class MapIterator : Iterator {
+  op new(iter, map) = {
+    self.iter = iter;
+    self.map = map;
+  };
 
-pub let Range = Iterator();
-
-Range.new = |from, to| {
-  self.from = from;
-  self.to = to;
+  op next() = {
+    let value = self.iter.next();
+    if value then self.map(value)
+  };
 };
 
-Range.next = || {
-  if self.from < self.to then {
-    let val = self.from;
-    self.from = val + 1;
-    val
-  }
+class TakeIterator : Iterator {
+  op new(iter, num) = {
+    self.iter = iter;
+    self.max = num;
+    self.cur = 0;
+  };
+
+  op next() = {
+    if self.cur < self.max then {
+      self.cur = self.cur + 1;
+      self.iter.next()
+    }
+  };
 };
 
-let ZipIterator = Iterator();
+pub class Range : Iterator {
+  op new(from, to) = {
+    self.from = from;
+    self.to = to;
+  };
 
-ZipIterator.new = |a, b| {
-  self.a = a;
-  self.b = b;
+  op next() = {
+    if self.from < self.to then {
+      let val = self.from;
+      self.from = self.from + 1;
+      val
+    }
+  };
 };
 
-ZipIterator.next = || {
-  let a = self.a.next();
-  let b = self.b.next();
+class SkipIterator : Iterator {
+  op new(iter, num) = {
+    self.iter = iter;
+    for i in Range(0, num) do {
+      self.iter.next();
+    };
+  };
 
-  if a != None && b != None then {
-    [a, b]
-  }
+  op next() = self.iter.next();
 };
 
-pub let FunctionIterator = Iterator();
+class ZipIterator : Iterator {
+  op new(a, b) = {
+    self.a = a;
+    self.b = b;
+  };
 
-FunctionIterator.new = |state, func| {
-  self.func = func;
-  self.state = state;
+  op next() = {
+    let a = self.a.next();
+    let b = self.b.next();
+    if a != None && b != None then {
+      [a, b]
+    }
+  };
 };
 
-FunctionIterator.next = || {
-  self.func(self.state)
+pub class FunctionIterator : Iterator {
+  op new(state, func) = {
+    self.func = func;
+    self.state = state;
+  };
+
+  op next() = self.func(self.state);
 };

@@ -1,4 +1,7 @@
-use crate::parser::lexer::{LexError, Token, TokenIter, TokenKind};
+use crate::parser::{
+    lexer::{LexError, Token, TokenIter, TokenKind},
+    Span,
+};
 use std::{error, fmt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,6 +69,7 @@ pub struct XmlNode {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    ObjectLiteral(Box<Expression>, Vec<(String, Expression)>),
     Int(i32),
     Float(f64),
     Boolean(bool),
@@ -84,6 +88,18 @@ pub enum Expression {
     Member(Box<Expression>, String),
     None,
 }
+
+static OPERATOR_NAMES: [&'static str; 9] = [
+    "new",
+    "plus",
+    "minus",
+    "times",
+    "divide",
+    "to_string",
+    "next",
+    "index_get",
+    "index_set",
+];
 
 #[derive(Debug, Clone)]
 pub enum Type {
@@ -132,10 +148,19 @@ pub struct InferParameter {
     pub type_annotation: Option<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Visibility {
     Private,
     Public,
+}
+
+impl Visibility {
+    pub fn is_visible(&self) -> bool {
+        match self {
+            Visibility::Private => false,
+            Visibility::Public => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -206,26 +231,46 @@ impl Statement {
 pub struct Parser<I: TokenIter> {
     lexer: I,
     stack: Vec<Token>,
+    last_span: Option<Span>,
 }
 
 #[derive(Debug)]
 pub enum ParseError {
     LexError(LexError),
     EOF,
-    Static(&'static str),
-    Custom(String),
+    Static(&'static str, Option<Span>),
+    Custom(String, Option<Span>),
+}
+
+fn fmt_option(obj: &Option<impl fmt::Display>, f: &mut fmt::Formatter) -> fmt::Result {
+    match obj {
+        Some(obj) => write!(f, "{}", obj),
+        None => write!(f, "<None>"),
+    }
 }
 
 impl error::Error for ParseError {}
 
 impl fmt::Display for ParseError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ParseError::LexError(e) => write!(formatter, "{}", e),
-            ParseError::EOF => write!(formatter, "EOF"),
-            ParseError::Static(s) => write!(formatter, "{}", s),
-            ParseError::Custom(s) => write!(formatter, "{}", s),
+            ParseError::LexError(e) => write!(f, "{}", e),
+            ParseError::EOF => write!(f, "EOF"),
+            ParseError::Static(s, span) => {
+                write!(f, "{} at ", s)?;
+                fmt_option(span, f)
+            }
+            ParseError::Custom(s, span) => {
+                write!(f, "{} at ", s)?;
+                fmt_option(span, f)
+            }
         }
+    }
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
     }
 }
 
@@ -247,7 +292,10 @@ impl RpnToken {
     fn to_expression(self) -> ParseResult<Expression> {
         match self {
             RpnToken::Expression(expr) => Ok(expr),
-            RpnToken::Operator(_) => Err(ParseError::Static("expected expression, found operator")),
+            RpnToken::Operator(_) => Err(ParseError::Static(
+                "expected expression, found operator",
+                None,
+            )),
         }
     }
 }
@@ -261,11 +309,11 @@ fn convert_rpn_to_expression(tokens: Vec<RpnToken>) -> ParseResult<Expression> {
             RpnToken::Operator(op) => {
                 let rhs = stack
                     .pop()
-                    .ok_or_else(|| ParseError::Static("binary requires 2 arguments"))?
+                    .ok_or_else(|| ParseError::Static("binary requires 2 arguments", None))?
                     .to_expression()?;
                 let lhs = stack
                     .pop()
-                    .ok_or_else(|| ParseError::Static("binary requires 2 arguments"))?
+                    .ok_or_else(|| ParseError::Static("binary requires 2 arguments", None))?
                     .to_expression()?;
                 let call = Expression::Binary(op, Box::new(lhs), Box::new(rhs));
                 stack.push(RpnToken::Expression(call));
@@ -275,7 +323,7 @@ fn convert_rpn_to_expression(tokens: Vec<RpnToken>) -> ParseResult<Expression> {
 
     stack
         .pop()
-        .ok_or_else(|| ParseError::Static("failed to parse RPN"))?
+        .ok_or_else(|| ParseError::Static("failed to parse RPN", None))?
         .to_expression()
 }
 
@@ -351,6 +399,7 @@ impl<I: TokenIter> Parser<I> {
         Parser {
             lexer,
             stack: Vec::new(),
+            last_span: None,
         }
     }
 
@@ -358,13 +407,18 @@ impl<I: TokenIter> Parser<I> {
         self.stack.push(token);
     }
 
+    fn last_span(&self) -> Option<Span> {
+        self.last_span.as_ref().map(|span| span.clone())
+    }
+
     pub fn next_token(&mut self) -> ParseResult<Option<Token>> {
         let token = self
             .stack
             .pop()
             .map(|tok| Ok(Some(tok)))
-            .unwrap_or_else(|| self.lexer.next_token().map_err(|err| err.into()));
-        token
+            .unwrap_or_else(|| self.lexer.next_token().map_err(|err| err.into()))?;
+        self.last_span = token.as_ref().map(|tok| tok.span.clone());
+        Ok(token)
     }
 
     fn next_operator(&mut self) -> ParseResult<Option<BinaryOp>> {
@@ -429,6 +483,7 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::Comma => self.parse_comma_separated_to_buf(parser, end, buf),
             _ => Err(ParseError::Static(
                 "expected comma or end of comma-separated list",
+                Some(token.span.clone()),
             )),
         }
     }
@@ -457,6 +512,45 @@ impl<I: TokenIter> Parser<I> {
         }
 
         Ok(buf)
+    }
+
+    fn parse_object_literal(&mut self, proto: Expression) -> ParseResult<Expression> {
+        let pairs = self.parse_comma_separated(
+            |parser| {
+                // Parser each pair of key and value
+                let key = parser.parse_identifier()?;
+                parser.parse_token(TokenKind::Colon)?;
+                let value = parser.parse_expr()?;
+                Ok((key, value))
+            },
+            TokenKind::CloseBrace,
+        )?;
+
+        let mut body = Vec::new();
+
+        let temp_name = "__value__";
+
+        let initial_value = Expression::Call(Box::new(proto), Vec::new());
+        let initial_assignment = Statement::Assignment {
+            visibility: Visibility::Private,
+            mutable: true,
+            value: initial_value,
+            parameter: temp_name.to_string(),
+        };
+        body.push(initial_assignment);
+
+        let identifier = Expression::Identifier(vec![temp_name.to_string()]);
+
+        for (key, value) in pairs {
+            let location = Expression::Member(Box::new(identifier.clone()), key);
+            let assign_key = Statement::Reassignment { location, value };
+            body.push(assign_key);
+        }
+
+        let expr = Expression::Block(body, Box::new(identifier));
+        Ok(expr)
+
+        // Ok(Expression::ObjectLiteral(Box::new(proto), pairs))
     }
 
     fn parse_expr_internal(&mut self, base_expr: Expression) -> ParseResult<Expression> {
@@ -489,6 +583,10 @@ impl<I: TokenIter> Parser<I> {
                         }
                         _ => return Err(ParseError::EOF),
                     };
+                    self.parse_expr_internal(next_base)
+                }
+                TokenKind::OpenBrace => {
+                    let next_base = self.parse_object_literal(base_expr)?;
                     self.parse_expr_internal(next_base)
                 }
                 _ => {
@@ -640,7 +738,10 @@ impl<I: TokenIter> Parser<I> {
                             )?;
                             Ok(Expression::Tuple(buf))
                         }
-                        _ => Err(ParseError::Static("expected comma or close parenthesis")),
+                        _ => Err(ParseError::Static(
+                            "expected comma or close parenthesis",
+                            Some(tok.span.clone()),
+                        )),
                     },
                     None => Err(ParseError::EOF),
                 }
@@ -676,10 +777,10 @@ impl<I: TokenIter> Parser<I> {
                 let body = self.parse_expr()?;
                 Ok(Expression::Lambda(params, Box::new(body)))
             }
-            _ => Err(ParseError::Custom(format!(
-                "unexpected token: {:?}",
-                token.kind
-            ))),
+            _ => Err(ParseError::Custom(
+                format!("unexpected token: {:?}", token.kind),
+                Some(token.span.clone()),
+            )),
         }
     }
 
@@ -690,10 +791,10 @@ impl<I: TokenIter> Parser<I> {
             // TODO give better error
             _ => {
                 println!("{:?}", token);
-                Err(ParseError::Custom(format!(
-                    "expected token {:?}, found {:?}",
-                    token_kind, token.kind
-                )))
+                Err(ParseError::Custom(
+                    format!("expected token {:?}, found {:?}", token_kind, token.kind),
+                    Some(token.span.clone()),
+                ))
             }
         }
     }
@@ -704,10 +805,10 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::Identifier(s) => Ok(s),
             _ => {
                 println!("warning: {:?}", token);
-                Err(ParseError::Custom(format!(
-                    "unexpected token: {:?}",
-                    token.kind
-                )))
+                Err(ParseError::Custom(
+                    format!("unexpected token: {:?}", token.kind),
+                    Some(token.span.clone()),
+                ))
             }
         }
     }
@@ -771,7 +872,10 @@ impl<I: TokenIter> Parser<I> {
                 Ok(Type::Tuple { types })
             }
             TokenKind::OpenBrace => self.parse_interface(),
-            _ => Err(ParseError::Static("no type pattern starts with that token")),
+            _ => Err(ParseError::Static(
+                "no type pattern starts with that token",
+                Some(token.span.clone()),
+            )),
         }
     }
 
@@ -817,22 +921,50 @@ impl<I: TokenIter> Parser<I> {
             type_annotation,
         })
     }
+    fn parse_operator(&mut self, visibility: Visibility) -> ParseResult<Statement> {
+        let name = self.parse_identifier()?;
+
+        // Check name
+        if OPERATOR_NAMES.into_iter().any(|el| *el == name) {
+            self.parse_token(TokenKind::OpenParen)?;
+            let parameters = self
+                .parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
+
+            self.parse_token(TokenKind::Equal)?;
+            let body = self.parse_expr()?;
+            Ok(Statement::FunctionDeclaration {
+                visibility,
+                identifier: name,
+                parameters,
+                body,
+            })
+        } else {
+            let message = format!("`{}` is not a reserved operator name", name).into();
+            Err(ParseError::Custom(message, self.last_span()))
+        }
+    }
 
     fn parse_function(&mut self, visibility: Visibility) -> ParseResult<Statement> {
         let name = self.parse_identifier()?;
 
-        self.parse_token(TokenKind::OpenParen)?;
-        let parameters =
-            self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
+        // Check name
+        if OPERATOR_NAMES.into_iter().all(|el| *el != name) {
+            self.parse_token(TokenKind::OpenParen)?;
+            let parameters = self
+                .parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
 
-        self.parse_token(TokenKind::Equal)?;
-        let body = self.parse_expr()?;
-        Ok(Statement::FunctionDeclaration {
-            visibility,
-            identifier: name,
-            parameters,
-            body,
-        })
+            self.parse_token(TokenKind::Equal)?;
+            let body = self.parse_expr()?;
+            Ok(Statement::FunctionDeclaration {
+                visibility,
+                identifier: name,
+                parameters,
+                body,
+            })
+        } else {
+            let message = format!("`{}` is a reserved operator name", name).into();
+            Err(ParseError::Custom(message, self.last_span()))
+        }
     }
 
     fn parse_statement_visibility(&mut self, visibility: Visibility) -> ParseResult<Statement> {
@@ -891,6 +1023,7 @@ impl<I: TokenIter> Parser<I> {
                     type_parameters,
                 })
             }
+            TokenKind::Operator => self.parse_operator(visibility),
             TokenKind::Function => self.parse_function(visibility),
             TokenKind::Let => {
                 let is_mut = self.parse_mutable()?;
@@ -958,6 +1091,7 @@ impl<I: TokenIter> Parser<I> {
                 let item = self.parse_identifier()?;
                 self.parse_token(TokenKind::In)?;
                 let iterator = self.parse_expr()?;
+                self.parse_token(TokenKind::Do)?;
                 self.parse_token(TokenKind::OpenBrace)?;
 
                 let mut statements = Vec::new();
@@ -993,6 +1127,7 @@ impl<I: TokenIter> Parser<I> {
 
             TokenKind::While => {
                 let condition = self.parse_expr()?;
+                self.parse_token(TokenKind::Do)?;
                 self.parse_token(TokenKind::OpenBrace)?;
 
                 let mut statements = Vec::new();
@@ -1092,6 +1227,7 @@ impl<I: TokenIter> Parser<I> {
                 }
                 _ => Err(ParseError::Static(
                     "final non-semicolon-suffixed statement of a block must be an expression",
+                    self.last_span(),
                 )),
             },
             TokenKind::Semicolon => {
@@ -1137,6 +1273,7 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::Function => self.parse_interface_func(),
             _ => Err(ParseError::Static(
                 "unexpected token in interface statement",
+                self.last_span(),
             )),
         }
     }
@@ -1181,6 +1318,8 @@ impl<I: TokenIter> Parser<I> {
             buf.push(statement);
         }
         buf = hoist_assignments(buf);
+        // println!("====");
+        // println!("{:#?}", buf);
         Ok(buf)
     }
 }
@@ -1188,6 +1327,7 @@ impl<I: TokenIter> Parser<I> {
 /// Rearranges the list of statements such that all assignments appear first
 pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
     let mut imports = Vec::new();
+    let mut class_forward_declarations = Vec::new();
     let mut assignments = Vec::new();
     let mut others = Vec::new();
 
@@ -1195,6 +1335,77 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
         match statement {
             import @ Statement::Import { .. } => {
                 imports.push(import);
+            }
+            Statement::ClassDeclaration {
+                identifier,
+                visibility,
+                parent,
+                body,
+            } => {
+                let name = identifier;
+
+                // Create forward declaration
+                let proto = parent
+                    .as_ref()
+                    .map(|ident| ident.clone())
+                    .unwrap_or_else(|| vec!["Object".into()]);
+
+                let proto = Expression::Identifier(proto);
+                let proto = Expression::Call(Box::new(proto), Vec::new());
+
+                let forward = Statement::Assignment {
+                    visibility,
+                    parameter: name.clone(),
+                    mutable: true,
+                    value: proto,
+                };
+
+                for statement in body {
+                    match statement {
+                        Statement::FunctionDeclaration {
+                            identifier,
+                            parameters,
+                            body,
+                            ..
+                        } => {
+                            // Get location
+                            let location = Expression::Member(
+                                Box::new(Expression::Identifier(vec![name.clone()])),
+                                identifier,
+                            );
+
+                            // Construct lambda
+                            let lambda = Expression::Lambda(parameters, Box::new(body));
+                            let assignment = Statement::Reassignment {
+                                location,
+                                value: lambda,
+                            };
+                            others.push(assignment);
+                        }
+                        Statement::Assignment {
+                            parameter, value, ..
+                        } => {
+                            // Get location
+                            let location = Expression::Member(
+                                Box::new(Expression::Identifier(vec![name.clone()])),
+                                parameter,
+                            );
+                            let assignment = Statement::Reassignment { location, value };
+                            others.push(assignment);
+                        }
+                        _ => todo!(),
+                    }
+                }
+
+                // let class = Statement::ClassDeclaration {
+                //     identifier,
+                //     visibility,
+                //     parent,
+                //     body,
+                // };
+
+                assignments.push(forward);
+                // assignments.push(class);
             }
             assignment @ Statement::Assignment { .. } => {
                 assignments.push(assignment);
@@ -1210,6 +1421,7 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
 
     imports
         .into_iter()
+        .chain(class_forward_declarations.into_iter())
         .chain(assignments.into_iter())
         .chain(others.into_iter())
         .collect()

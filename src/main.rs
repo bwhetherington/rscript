@@ -8,7 +8,10 @@ mod parser;
 // use crate::codegen::compiler::Compiler;
 use crate::{
     engine::{Engine, Value},
-    parser::{parse_module, BinaryOp, Expression, Lexer, Module, Parser, Statement, Visibility},
+    parser::{
+        hoist_assignments, parse_module, BinaryOp, Expression, Lexer, Module, Parser, Statement,
+        Visibility,
+    },
 };
 use std::error::Error;
 use std::fs;
@@ -117,7 +120,11 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
     match statement {
         Statement::Expression(expr) => Ok(engine.evaluate(&expr)?),
         other => {
-            engine.execute(&other)?;
+            let mut statements = vec![other];
+            statements = hoist_assignments(statements);
+            for statement in &statements {
+                engine.execute(statement)?;
+            }
             Ok(Value::None)
         }
     }
@@ -126,6 +133,7 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
 fn load_std(engine: &mut Engine) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("RSC_HOME")?;
     let module = parse_module(home)?;
+    engine.preload_module(&module);
     engine.load_module(&module, false)?;
     Ok(())
 }
@@ -182,20 +190,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = Engine::new();
     engine.init()?;
 
-    load_std(&mut engine).unwrap();
+    load_std(&mut engine).map_err(|err| {
+        eprintln!("{}", err);
+        eprintln!("Error in module: {}", engine.cur_module());
+        std::process::exit(-1);
+    });
 
     // Load specified module
     if let Some(module) = file {
         let module = parse_module(module)?;
+        engine.preload_module(&module);
         engine.load_module(&module, true);
         engine.run_main()?;
     }
 
-    // let module = parse_module("std")?;
-    // engine.load_module(&module, true)?;
-
-    // // Find the main method
-    // engine.run_main()?;
+    // Find the main method
+    engine.run_main()?;
 
     if interactive {
         let mut console = Console::new();

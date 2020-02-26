@@ -1,48 +1,25 @@
-# import std::iter::Range;
+import std::iter::Range;
 
-# let BASE_CAPACITY = 10;
+let INITIAL_CAPACITY = 10;
 
-# let Pair = Object();
+pub class HashMap {
+  op new() = {
+    self.buckets = [];
+    for x in Range(0, INITIAL_CAPACITY) do {
+      self.buckets.push([]);
+    };
+  };
 
-# Pair.new = |a, b| {
-#   self.key = a;
-#   self.value = b;
-# };
+  fn capacity() = self.buckets.len();
 
-# pub let HashMap = Object();
+  fn get_bucket(value) = {
+    let hash = value.hash();
+    let bucket_num = hash % self.capacity();
+    let bucket = self.buckets[bucket_num];
+    bucket.push(value);
+  };
 
-# HashMap.new = || {
-#   self.buckets = [[]] * BASE_CAPACITY;
-# };
+  fn resize() = {
 
-# HashMap.grow = || {
-#   # Store the old values
-#   let old_buckets = self.buckets;
-
-#   # Double capacity
-#   self.buckets = [[]] * self.buckets.len() * 2;
-
-# };
-
-# HashMap.get_bucket = |key| {
-#   let bucket = key.hash() % self.buckets.len();
-#   self.buckets[bucket]
-# };
-
-# HashMap.insert = |key, value| {
-#   let pair = Pair(key, value);
-#   let bucket = self.get_bucket(key);
-#   bucket.push(pair);
-# };
-
-# HashMap.lookup = |key| {
-#   let bucket = self.get_bucket(key);
-#   let found = None;
-#   for pair in bucket.iter() {
-#     if pair.key == key then {
-#       found = pair.value;
-#       break;
-#     };
-#   };
-#   found
-# };
+  };
+};

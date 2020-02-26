@@ -2,34 +2,32 @@ import std::iter::Range;
 import std::rand::rng;
 import std::io::println;
 
-pub let Slice = List();
+pub class Slice : List {
+  op new(list, from, to) = {
+    self.list = list;
+    self.from = from;
+    self.to = to;
+  };
 
-Slice.new = |list, from, to| {
-  self.list = list;
-  self.from = from;
-  self.to = to;
+  op index_get(i) = self.list[self.from + i];
+
+  op index_set(i, value) = {
+    self.list[self.from + i] = value;
+  };
+
+  op to_string() = self.iter().list().to_string();
+
+  fn iter() = self.list.iter().slice(self.from, self.to);
+
+  fn len() = self.to - self.from;
 };
-
-Slice.len = || self.to - self.from;
-
-Slice.index_get = |i| self.list[self.from + i];
-
-Slice.index_set = |i, value| {
-  self.list[self.from + i] = value;
-};
-
-Slice.to_string = || 
-  self.list.iter()
-    .slice(self.from, self.to)
-    .list()
-    .to_string();
 
 List.slice = |from, to| Slice(self, from, to);
 
 List.times = |num| {
   let list = [];
-  for _ in Range(0, num) {
-    for x in self {
+  for _ in Range(0, num) do {
+    for x in self do {
       list.push(x);
     };
   };
@@ -38,7 +36,7 @@ List.times = |num| {
 
 List.copy = || {
   let new_list = [];
-  for item in self.iter() {
+  for item in self.iter() do {
     new_list.push(item);
   };
   new_list
@@ -46,7 +44,7 @@ List.copy = || {
 
 List.contains = |item| {
   let is_contained = False;
-  for self_item in self.iter() {
+  for self_item in self.iter() do {
     if item == self_item then {
       is_contained = True;
       break;
@@ -60,10 +58,10 @@ List.shuffle_rng = |gen| {
   let gen = gen.ints(0, len);
   let new_list = [];
   let picked = [-1];
-  for i in Range(0, len) {
+  for i in Range(0, len) do {
     # Pick index
     let index = -1;
-    while picked.contains(index) {
+    while picked.contains(index) do {
       index = gen.next();
     };
     picked.push(index);
@@ -77,7 +75,7 @@ List.shuffle = || self.shuffle_rng(rng());
 List.rev = || {
   let len = self.len();
   let output = [];
-  for i in Range(0, len) {
+  for i in Range(0, len) do {
     let index = len - i - 1;
     output.push(self[index]);
   };
@@ -88,7 +86,7 @@ String.equals = |other| {
   if self.len() == other.len() then {
     # If strings are of the same length, check all pairs of chars for equality
     let output = True;
-    for pair in self.char_codes().zip(other.char_codes()) {
+    for pair in self.char_codes().zip(other.char_codes()) do {
       let a = pair[0];
       let b = pair[1];
       if a != b then {
@@ -119,7 +117,7 @@ String.split = |delim| {
   let strs = [];
   let cur = "";
 
-  for ch in self {
+  for ch in self do {
     if ch == delim then {
       if cur.len() > 0 then {
         strs.push(cur);

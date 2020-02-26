@@ -10,9 +10,11 @@ pub struct Token {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Assign,
+    Do,
     Dot,
     DotDot,
     Function,
+    Operator,
     Type,
     Let,
     Mut,
@@ -74,7 +76,7 @@ pub enum TokenKind {
     In,
 }
 
-const TOKENS: [(&'static str, TokenKind); 19] = [
+const TOKENS: [(&'static str, TokenKind); 21] = [
     ("True", TokenKind::Boolean(true)),
     ("False", TokenKind::Boolean(false)),
     ("None", TokenKind::None),
@@ -84,6 +86,7 @@ const TOKENS: [(&'static str, TokenKind); 19] = [
     ("let", TokenKind::Let),
     ("mut", TokenKind::Mut),
     ("fn", TokenKind::Function),
+    ("op", TokenKind::Operator),
     ("type", TokenKind::Type),
     ("pub", TokenKind::Public),
     ("import", TokenKind::Import),
@@ -94,6 +97,7 @@ const TOKENS: [(&'static str, TokenKind); 19] = [
     ("break", TokenKind::Break),
     ("for", TokenKind::For),
     ("in", TokenKind::In),
+    ("do", TokenKind::Do),
 ];
 
 fn is_delimiter(ch: char) -> bool {
@@ -142,18 +146,21 @@ pub enum LexError {
 
 impl error::Error for LexError {}
 
+fn show_file(file: Option<&String>) -> String {
+    match file {
+        Some(s) => format!("{}", s),
+        None => format!("<File>"),
+    }
+}
+
 impl fmt::Display for LexError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "LexError: ")?;
         match self {
-            LexError::UnclosedString(Span { col, row, len: _ }) => {
-                write!(formatter, "unclosed string at {}, {}", col, row)
+            LexError::UnclosedString(span) => write!(formatter, "unclosed string at {}", span),
+            LexError::InvalidIdentifier(ident, span) => {
+                write!(formatter, "invalid identifier \"{}\" at {}", ident, span)
             }
-            LexError::InvalidIdentifier(ident, Span { col, row, len: _ }) => write!(
-                formatter,
-                "invalid identifier \"{}\" at {}, {}",
-                ident, row, col
-            ),
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::parser::*;
+use crate::{engine::Node, parser::*};
 use std::cell::RefCell;
 use std::{
     collections::{HashMap, HashSet},
@@ -143,6 +143,8 @@ pub struct Engine {
     path: Vec<String>,
     modules: HashMap<Vec<String>, Value>,
     interned_strings: HashMap<String, Value>,
+    cur_module: String,
+    root: Node,
 }
 
 #[derive(Debug)]
@@ -183,6 +185,19 @@ impl EvalError {
     }
 }
 
+fn matches_prefix<T: PartialEq + fmt::Debug>(
+    prefix: impl Iterator<Item = T>,
+    path: impl Iterator<Item = T>,
+) -> bool {
+    prefix
+        .zip(path)
+        .map(|(a, b)| {
+            println!("{:?} ==? {:?}", a, b);
+            (a, b)
+        })
+        .all(|(a, b)| a == b)
+}
+
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use EvalError::*;
@@ -214,7 +229,13 @@ impl Engine {
             path: Vec::new(),
             modules: HashMap::new(),
             interned_strings: HashMap::new(),
+            cur_module: "<None>".into(),
+            root: Node::module("<root>"),
         }
+    }
+
+    pub fn cur_module(&self) -> &str {
+        &self.cur_module
     }
 
     fn lookup_string(&mut self, s: impl AsRef<str>) -> EvalResult<Value> {
@@ -715,6 +736,7 @@ impl Engine {
         self.define_unary_fn("asin", f64::asin);
         self.define_unary_fn("acos", f64::acos);
         self.define_unary_fn("atan", f64::atan);
+        self.define_unary_fn("sqrt", f64::sqrt);
         self.define_binary_fn("atan2", f64::atan2);
     }
 
@@ -958,6 +980,11 @@ impl Engine {
                 }
                 ignore.ascend();
             }
+            // ClassDeclaration {
+            //     ..,
+            // } => {
+
+            // }
             _ => {}
         }
         Ok(())
@@ -1036,8 +1063,14 @@ impl Engine {
         Ok(())
     }
 
+    pub fn preload_module(&mut self, module: &Module) {
+        let node = Node::trace(module);
+        self.root.insert_child(node);
+    }
+
     pub fn load_module(&mut self, module: &Module, bare_root: bool) -> EvalResult<()> {
         self.env.descend();
+        self.cur_module = module.identifier.clone();
         if !bare_root {
             self.path.push(module.identifier.clone());
         }
@@ -1054,6 +1087,7 @@ impl Engine {
         if !bare_root {
             self.path.pop();
         }
+        self.cur_module = "<None>".into();
         self.env.ascend();
         Ok(())
     }
@@ -1065,7 +1099,19 @@ impl Engine {
     fn find_module_declaration(&self, identifier: &[String]) -> EvalResult<Value> {
         self.get_module_declaration(identifier)
             .cloned()
+            // .unwrap_or_else(|| Value::Link(identifier.to_owned().into()))
             .ok_or_else(|| EvalError::undefined(identifier.join("::")))
+    }
+
+    fn find_module_declarations(&self, prefix: &[String]) -> Vec<Vec<String>> {
+        self.root.find_items(prefix)
+        // let res = self
+        //     .modules
+        //     .iter()
+        //     .filter(|(path, _)| matches_prefix(prefix.iter(), path.iter()))
+        //     .map(|(path, _)| path.clone())
+        //     .collect();
+        // res
     }
 
     fn define_module_declaration(&mut self, identifier: impl Into<String>, val: Value) {
@@ -1076,7 +1122,7 @@ impl Engine {
 
     pub fn run_main(&mut self) -> EvalResult<Value> {
         // Attempt to find main method
-        let main_path = ["main".into(), "main".into()];
+        let main_path = ["std".into(), "main".into(), "main".into()];
 
         let main = self.find_module_declaration(&main_path)?;
 
@@ -1088,6 +1134,31 @@ impl Engine {
 
     fn is_looping(&self, depth: usize) -> bool {
         self.loop_depth >= depth
+    }
+
+    fn evaluate_identifier(&mut self, ident: &[String], lazy: bool) -> EvalResult<Value> {
+        // Check if we have a path or simple identifier
+        if ident.len() == 1 {
+            // Handle case of simple identifier
+            let ident = &ident[0];
+            self.env
+                .get(ident)
+                .cloned()
+                .ok_or_else(|| EvalError::undefined(ident))
+                .map_err(|err| {
+                    // println!("env: {:#?}", self.env);
+                    println!("Error in module: {}", self.cur_module);
+                    err
+                })
+                .and_then(|value| self.evaluate_value(&value, lazy))
+        } else {
+            // Look up the full path in modules
+            if lazy {
+                Ok(Value::Link(ident.to_vec().into()))
+            } else {
+                self.find_module_declaration(ident)
+            }
+        }
     }
 
     pub fn execute(&mut self, stmt: &Statement) -> EvalResult<()> {
@@ -1148,14 +1219,85 @@ impl Engine {
                 parent,
                 body,
             } => {
-                // Foo
+                // Initial object declaration
+                let mut object = Object::new();
 
-                todo!()
+                if let Some(parent) = parent {
+                    // Check parent
+                    let parent = self.evaluate_identifier(parent, false)?;
+                    if let Value::Object(parent_ptr) = parent {
+                        object.set_proto(parent_ptr);
+                    } else {
+                        return Err(EvalError::type_mismatch("Object", parent.type_of()));
+                    }
+                } else {
+                    let proto = self.get_proto("Object")?;
+                    object.set_proto(proto);
+                }
+
+                let object = Value::Object(Rc::new(RefCell::new(object)));
+
+                self.env.insert(identifier, object.clone());
+
+                if visibility.is_visible() {
+                    self.define_module_declaration(identifier, object.clone());
+                }
+
+                // Define methods
+                self.env.descend();
+
+                for statement in body {
+                    self.execute(statement)?;
+                }
+                // Now we go over what has been defined in this level and move
+                // into the object itself
+                match &object {
+                    Value::Object(obj) => {
+                        let inner_obj = obj.clone();
+                        let mut inner_obj = inner_obj.borrow_mut();
+
+                        for frame in self.env.frames().next() {
+                            for (key, value) in frame.iter() {
+                                inner_obj.set(key, value.clone());
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+
+                self.env.ascend();
+
+                // Check what was inserted
+                // let inserted = self.lookup_string(identifier)?;
+
+                // self.print_value(&inserted)?;
+                Ok(())
             }
             Statement::Import { path, alias } => {
-                let value = Value::Link(path.clone().into());
-                self.env.insert(alias, value);
-                Ok(())
+                // Check if wildcard import
+                match path.last() {
+                    Some(s) if s == "_" => {
+                        // Import everything from that path
+                        let prefix = &path[..path.len() - 1];
+                        let items: Vec<_> = self
+                            .find_module_declarations(prefix)
+                            .into_iter()
+                            .map(|item| item.clone())
+                            .collect();
+
+                        for path in items {
+                            let name = path.last().unwrap();
+                            let value = Value::Link(path.clone().into());
+                            self.env.insert(name, value);
+                        }
+                        Ok(())
+                    }
+                    _ => {
+                        let value = Value::Link(path.clone().into());
+                        self.env.insert(alias, value);
+                        Ok(())
+                    }
+                }
             }
             Statement::FunctionDeclaration {
                 visibility,
@@ -1190,7 +1332,7 @@ impl Engine {
                 parameter,
                 value,
             } => {
-                let val = self.evaluate(value)?;
+                let val = self.evaluate_maybe_lazy(value, true)?;
                 self.env.insert(parameter, val.clone());
                 if let Visibility::Public = visibility {
                     self.define_module_declaration(parameter, val);
@@ -1223,7 +1365,10 @@ impl Engine {
                             Ok(())
                         } else {
                             // println!("env: {:?}", self.env);
-                            Err(EvalError::undefined(ident))
+                            Err(EvalError::undefined(ident)).map_err(|err| {
+                                println!("Error in module: {}", self.cur_module);
+                                err
+                            })
                         }
                     }
                     other => {
@@ -1409,7 +1554,39 @@ impl Engine {
     }
 
     pub fn evaluate(&mut self, expr: &Expression) -> EvalResult<Value> {
-        match expr {
+        self.evaluate_maybe_lazy(expr, false)
+    }
+
+    pub fn evaluate_maybe_lazy(&mut self, expr: &Expression, lazy: bool) -> EvalResult<Value> {
+        let value = match expr {
+            Expression::ObjectLiteral(proto, key_values) => {
+                let proto = self.evaluate(proto.as_ref())?;
+                match proto {
+                    Value::Object(proto) => {
+                        let mut obj = Object::new();
+                        obj.set_proto(proto);
+
+                        let evaluated: Result<Vec<_>, _> = key_values
+                            .iter()
+                            .map(|(key, value)| match self.evaluate(value) {
+                                Ok(value) => Ok((key.clone(), value)),
+                                Err(err) => Err(err),
+                            })
+                            .collect();
+
+                        let evaluated = evaluated?;
+
+                        for (key, value) in evaluated {
+                            obj.set(key, value);
+                        }
+                        let ptr = Rc::new(RefCell::new(obj));
+                        let value = Value::Object(ptr);
+
+                        Ok(value)
+                    }
+                    other => Err(EvalError::type_mismatch("Object", other.type_of())),
+                }
+            }
             Expression::List(exprs) => {
                 let values: Vec<_> = exprs
                     .iter()
@@ -1480,7 +1657,7 @@ impl Engine {
                     }
 
                     other => {
-                        println!("unimplemented: {}", other);
+                        println!("unimplemented: {} <{}>", other, other.type_of());
                         todo!()
                     }
                 }
@@ -1498,27 +1675,7 @@ impl Engine {
                 let parent = self.evaluate(parent)?;
                 Object::get_field(&parent, key)
             }
-            Expression::Identifier(ident) => {
-                // Check if we have a path or simple identifier
-                let value = if ident.len() == 1 {
-                    // Handle case of simple identifier
-                    let ident = &ident[0];
-                    self.env
-                        .get(ident)
-                        .cloned()
-                        .ok_or_else(|| EvalError::undefined(ident))
-                        .map_err(|err| {
-                            // println!("env: {:#?}", self.env);
-                            err
-                        })
-                        .and_then(|value| self.evaluate_value(&value))?
-                } else {
-                    // Look up the full path in modules
-                    self.find_module_declaration(ident)?
-                };
-
-                Ok(value)
-            }
+            Expression::Identifier(ident) => self.evaluate_identifier(ident, lazy),
             Expression::String(s) => self.lookup_string(s),
             Expression::Boolean(b) => Ok(Value::Boolean(*b)),
             Expression::Int(n) => Ok(Value::Number(*n as f64)),
@@ -1534,7 +1691,8 @@ impl Engine {
                 println!("unimplemented: {:?}", other);
                 unimplemented!()
             }
-        }
+        }?;
+        self.evaluate_value(&value, lazy)
     }
 
     fn call(&mut self, f: &Function, args: &[Value]) -> EvalResult<Value> {
@@ -1573,9 +1731,9 @@ impl Engine {
         }
     }
 
-    fn evaluate_value(&mut self, val: &Value) -> EvalResult<Value> {
+    fn evaluate_value(&mut self, val: &Value, lazy: bool) -> EvalResult<Value> {
         match val {
-            Value::Link(path) => self.find_module_declaration(path.as_ref()),
+            Value::Link(path) if !lazy => self.find_module_declaration(path.as_ref()),
             other => Ok(other.clone()),
         }
     }
@@ -1888,5 +2046,15 @@ impl Value {
             Value::Link(_) => "Link",
             Value::None => "None",
         }
+    }
+}
+
+trait ClonePtr<T> {
+    fn clone_ptr(&self) -> T;
+}
+
+impl<T: Clone> ClonePtr<T> for Ptr<T> {
+    fn clone_ptr(&self) -> T {
+        self.borrow().clone()
     }
 }
