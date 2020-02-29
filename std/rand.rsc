@@ -1,4 +1,6 @@
 import std::iter::Iterator;
+import std::math::floor;
+import std::proc::time;
 
 let A = 1664525;
 let C = 1013904223;
@@ -18,4 +20,4 @@ pub class Rng : Iterator {
   fn ints(min, max) = self.map(|r| floor(r * (max - min)) + min);
 };
 
-pub fn rng() = std::rand::Rng(std::sys::time());
+pub fn rng() = Rng(time());

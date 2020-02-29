@@ -132,7 +132,7 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
 
 fn load_std(engine: &mut Engine) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("RSC_HOME")?;
-    let module = parse_module(home)?;
+    let module = parse_ast(&home)?;
     engine.preload_module(&module);
     engine.load_module(&module, false)?;
     Ok(())
@@ -208,6 +208,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     engine.run_main()?;
 
     if interactive {
+        handle_input(&mut engine, "import std::prelude::_").expect("failed to import prelude");
         let mut console = Console::new();
         loop {
             let input = console.prompt("> ")?;

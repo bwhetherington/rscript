@@ -1,19 +1,17 @@
-pub let Complex = Object();
+pub class Complex {
+  op new(r, c) = {
+    self.r = r;
+    self.c = c;
+  };
 
-Complex.new = |real, complex| {
-  self.r = real;
-  self.c = complex;
-};
+  op plus(other) = Complex(self.r + other.r, self.c + other.c);
 
-Complex.plus = |other| Complex(self.r + other.r, self.c + other.c);
-
-# Multiplication
-# a+bi * c+di = (ac-bd)+(ac+bd)i
-Complex.times = |other| {
-  let p = self.r;
-  let q = self.c;
-  let r = other.r;
-  let s = other.c;
-  Complex(p * r - q * s, p * s + q * r)
+  op times(other) = {
+    let p = self.r;
+    let q = self.c;
+    let r = other.r;
+    let s = other.c;
+    Complex(p * r - q * s, p * s + q * r)
+  };
 };
 

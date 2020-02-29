@@ -1,20 +1,38 @@
 pub class Iterator {
+  # Produces the next element of the iterator, if present.
   op next() = None;
 
+  # Produces a new iterator that produces only elements from this iterator that
+  # meet the specified condition.
   fn filter(pred) = FilterIterator(self, pred);
 
+  # Produces a new iterator that produces elements from this iterator that are
+  # passed through the specified function.
   fn map(f) = MapIterator(self, f);
 
+  # Produces a new iterator that produces only the first `count` elements from
+  # this iterator.
   fn take(count) = TakeIterator(self, count);
 
+  # Produces a new iterator that produces only elements after the first `count`
+  # elements from this iterator.
   fn skip(count) = SkipIterator(self, count);
 
+  # Produces a new iterator that produces pairs of elements from this iterator
+  # and the other specified iterator.
   fn zip(iter) = ZipIterator(self, iter);
 
+  fn zip_with(iter, f) = ZipIterator(self, iter).map(|pair| f(pair[0], pair[1]));
+
+  # Produces itself.
   fn iter() = self;
 
+  # Produces the elements from this iterator in the range [from, to).
   fn slice(from, to) = self.skip(from).take(to - from);
 
+  fn peekable() = PeekableIterator(self);
+
+  # Consumes this iterator, producing a list containing all of its elements.
   fn list() = {
     let list = [];
     for value in self do {
@@ -23,6 +41,7 @@ pub class Iterator {
     list
   };
 
+  # Consumes this iterator, producing the result of a right fold across it.
   fn fold(acc, func) = {
     for x in self do {
       acc = func(acc, x);
@@ -30,17 +49,43 @@ pub class Iterator {
     acc
   };
 
+  # Consumes this iterator, producing the result of a right fold across it,
+  # starting with its first element as the initial value.
   fn reduce(func) = {
     let acc = self.next();
     self.fold(acc, func)
   };
 
+  # Consumes this iterator, producing the sum of its elements
   fn sum() = self.fold(0, |a, b| a + b);
 
+  # Consumes this iterator, performing the specified function on each element.
   fn for_each(func) = {
     for x in self do {
       func(x);
     };
+  };
+
+  op plus(other) = self.zip_with(other, |a, b| a + b);
+};
+
+class PeekableIterator : Iterator {
+  op new(iter) = {
+    self.iter = iter;
+    self.queue = [];
+  };
+
+  op next() = 
+    if self.queue.len() > 0 
+    then self.queue.pop()
+    else self.iter.next();
+
+  fn peek() = {
+    let value = self.next();
+    if value != None then {
+      self.queue.push(value);
+    };
+    value
   };
 };
 
@@ -58,8 +103,6 @@ class IndexIterator : Iterator {
       value
     } 
   };
-
-  fn peek() = self.list[self.index];
 };
 
 List.iter = || {

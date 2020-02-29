@@ -15,6 +15,16 @@ pub struct Module {
     pub children: Vec<Module>,
 }
 
+impl Module {
+    pub fn new(name: impl Into<String>) -> Module {
+        Module {
+            identifier: name.into(),
+            body: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ModuleError {
     ParseError(ParseError),
@@ -50,6 +60,13 @@ impl From<Error> for ModuleError {
 
 const EXTENSION: &'static str = "rsc";
 
+fn parse_source(source: impl AsRef<str>) -> ModuleResult<Vec<Statement>> {
+    let lexer = Lexer::new(source.as_ref());
+    let mut parser = Parser::new(lexer);
+    let body = parser.parse_statements()?;
+    Ok(body)
+}
+
 fn parse_body(path: impl AsRef<Path>) -> ModuleResult<Vec<Statement>> {
     let path = path.as_ref();
     let mut file = fs::File::open(path)?;
@@ -57,11 +74,51 @@ fn parse_body(path: impl AsRef<Path>) -> ModuleResult<Vec<Statement>> {
     file.read_to_string(&mut buf)?;
 
     // Parse file
-    let lexer = Lexer::new(&buf);
-    let mut parser = Parser::new(lexer);
-    let body = parser.parse_statements()?;
+    parse_source(&buf)
+}
 
-    Ok(body)
+pub struct ModuleInfo {
+    pub name: String,
+    pub body: String,
+    pub children: Vec<ModuleInfo>,
+}
+
+impl ModuleInfo {
+    pub fn new(
+        name: impl Into<String>,
+        body: impl Into<String>,
+        children: Vec<ModuleInfo>,
+    ) -> ModuleInfo {
+        ModuleInfo {
+            name: name.into(),
+            body: body.into(),
+            children,
+        }
+    }
+}
+
+pub fn parse_from_meta(meta: &ModuleInfo) -> ModuleResult<Module> {
+    let mut base_module = Module::new(&meta.name);
+
+    // Check if we have a folder or not
+    if meta.children.len() > 0 {
+        // Folder
+        // Find its source in the `mod` child
+        for child in &meta.children {
+            if &child.name == "mod" {
+                let body = parse_source(&child.body)?;
+                base_module.body = body;
+            } else {
+                let child_module = parse_from_meta(child)?;
+                base_module.children.push(child_module);
+            }
+        }
+    } else {
+        let body = parse_source(&meta.body)?;
+        base_module.body = body;
+    }
+
+    Ok(base_module)
 }
 
 pub fn parse_module(entry_point: impl AsRef<Path>) -> ModuleResult<Module> {
@@ -74,11 +131,7 @@ pub fn parse_module(entry_point: impl AsRef<Path>) -> ModuleResult<Module> {
         .unwrap();
 
     if path.is_dir() {
-        let mut base_module = Module {
-            identifier,
-            body: Vec::new(),
-            children: Vec::new(),
-        };
+        let mut base_module = Module::new(identifier);
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             let child_path = entry.path();

@@ -1,5 +1,18 @@
 import std::iter::Range;
 
+pub let PI = __PI__;
+pub let E = __E__;
+
+pub let floor = __floor__;
+pub let ceil = __ceil__;
+pub let sin = __sin__;
+pub let cos = __cos__;
+pub let tan = __tan__;
+pub let asin = __asin__;
+pub let acos = __acos__;
+pub let atan = __atan__;
+pub let atan2 = __atan2__;
+
 # Produces the nth fibonacci number.
 pub fn fibonacci(x) = {
   let fibs = [0, 1];
@@ -48,7 +61,3 @@ pub class Vec2 {
   
   op to_string() = "(" + self.x + ", " + self.y + ")";
 };
-
-pub let PI = __PI__;
-pub let E = __E__;
-

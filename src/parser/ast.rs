@@ -268,12 +268,6 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl fmt::Display for Expression {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
-    }
-}
-
 impl Into<ParseError> for LexError {
     fn into(self) -> ParseError {
         ParseError::LexError(self)
@@ -970,6 +964,10 @@ impl<I: TokenIter> Parser<I> {
     fn parse_statement_visibility(&mut self, visibility: Visibility) -> ParseResult<Statement> {
         let token = self.next_token_internal()?;
         match token.kind {
+            TokenKind::Mod => {
+                let identifier = self.parse_identifier()?;
+                todo!()
+            }
             TokenKind::Class => {
                 let identifier = self.parse_identifier()?;
                 let tok = self.next_token_internal()?;
@@ -1410,8 +1408,20 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
             assignment @ Statement::Assignment { .. } => {
                 assignments.push(assignment);
             }
-            function @ Statement::FunctionDeclaration { .. } => {
-                assignments.push(function);
+            Statement::FunctionDeclaration {
+                visibility,
+                identifier,
+                parameters,
+                body,
+            } => {
+                let lambda = Expression::Lambda(parameters, Box::new(body));
+                let assignment = Statement::Assignment {
+                    visibility,
+                    mutable: true,
+                    parameter: identifier,
+                    value: lambda,
+                };
+                assignments.push(assignment);
             }
             other => {
                 others.push(other);
@@ -1425,4 +1435,30 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
         .chain(assignments.into_iter())
         .chain(others.into_iter())
         .collect()
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Expression::*;
+        match self {
+            Boolean(b) if *b => write!(f, "True"),
+            Boolean(b) => write!(f, "False"),
+            None => write!(f, "None"),
+            Int(n) => write!(f, "{}", n),
+            Float(n) => write!(f, "{}", n),
+            Block(statements, expr) => {
+                write!(f, "{{ ")?;
+                for statement in statements {}
+                write!(f, " }}")
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Statement::*;
+        Ok(())
+    }
 }

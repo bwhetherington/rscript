@@ -1,8 +1,9 @@
 use crate::{engine::Node, parser::*};
 use std::cell::RefCell;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::DefaultHasher, HashMap, HashSet},
     error::Error,
+    hash::{Hash, Hasher},
     rc::Rc,
 };
 
@@ -219,6 +220,33 @@ impl fmt::Display for EvalError {
 impl Error for EvalError {}
 
 type EvalResult<T> = Result<T, EvalError>;
+
+fn hash_f64<H: Hasher>(f: f64, h: &mut H) {
+    let int = match f {
+        f if f.is_infinite() && f.is_sign_positive() => std::i32::MAX,
+        f if f.is_infinite() => std::i32::MIN,
+        f if f.is_nan() => 0,
+        f => f as i32,
+    };
+    int.hash(h);
+}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Value::*;
+        match self {
+            Number(n) => hash_f64(*n, state),
+            Boolean(b) => b.hash(state),
+            String(s) => s.hash(state),
+            List(vals) => vals.borrow().hash(state),
+            Symbol(s) => s.hash(state),
+            Object(obj) => obj.borrow().hash(state),
+            None => 0.hash(state),
+            Link(path) => path.hash(state),
+            Function(_) => 0.hash(state),
+        }
+    }
+}
 
 impl Engine {
     pub fn new() -> Engine {
@@ -728,20 +756,30 @@ impl Engine {
     }
 
     fn define_math_built_ins(&mut self) {
-        self.define_unary_fn("floor", f64::floor);
-        self.define_unary_fn("ceil", f64::ceil);
-        self.define_unary_fn("sin", f64::sin);
-        self.define_unary_fn("cos", f64::cos);
-        self.define_unary_fn("tan", f64::tan);
-        self.define_unary_fn("asin", f64::asin);
-        self.define_unary_fn("acos", f64::acos);
-        self.define_unary_fn("atan", f64::atan);
-        self.define_unary_fn("sqrt", f64::sqrt);
-        self.define_binary_fn("atan2", f64::atan2);
+        self.define_unary_fn("__floor__", f64::floor);
+        self.define_unary_fn("__ceil__", f64::ceil);
+        self.define_unary_fn("__sin__", f64::sin);
+        self.define_unary_fn("__cos__", f64::cos);
+        self.define_unary_fn("__tan__", f64::tan);
+        self.define_unary_fn("__asin__", f64::asin);
+        self.define_unary_fn("__acos__", f64::acos);
+        self.define_unary_fn("__atan__", f64::atan);
+        self.define_unary_fn("__sqrt__", f64::sqrt);
+        self.define_binary_fn("__atan2__", f64::atan2);
     }
 
     pub fn init(&mut self) -> EvalResult<()> {
         self.define_math_built_ins();
+
+        self.define_built_in("__hash__", |_, _, args| match args {
+            [value] => {
+                let mut hasher = DefaultHasher::new();
+                value.hash(&mut hasher);
+                let output = hasher.finish() as f64;
+                Ok(Value::Number(output))
+            }
+            xs => Err(EvalError::arity_mismatch(1, xs.len())),
+        });
 
         self.define_built_in("__exit__", |_, _, args| match args {
             [Value::Number(n)] if is_type!(*n, f64, i32) => {
@@ -1733,7 +1771,11 @@ impl Engine {
 
     fn evaluate_value(&mut self, val: &Value, lazy: bool) -> EvalResult<Value> {
         match val {
-            Value::Link(path) if !lazy => self.find_module_declaration(path.as_ref()),
+            // Recursively follow links to find a value
+            Value::Link(path) if !lazy => {
+                let value = self.find_module_declaration(path.as_ref())?;
+                self.evaluate_value(&value, lazy)
+            }
             other => Ok(other.clone()),
         }
     }
@@ -1854,7 +1896,7 @@ pub enum Value {
     None,
 }
 
-fn ptr_eq<T>(a: Ptr<T>, b: Ptr<T>) -> bool {
+fn ptr_eq<T, R: AsRef<T>>(a: R, b: R) -> bool {
     let a = a.as_ref() as *const _;
     let b = b.as_ref() as *const _;
     a == b
@@ -1884,6 +1926,15 @@ pub struct Object {
     fields: Frame,
 }
 
+impl Hash for Object {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for (field, value) in self.fields.iter() {
+            field.hash(state);
+            value.hash(state);
+        }
+    }
+}
+
 impl Object {
     pub fn new() -> Object {
         Object {
@@ -1896,34 +1947,62 @@ impl Object {
         self.proto = Some(proto);
     }
 
-    pub fn try_get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Option<Value>> {
+    pub fn try_get_super_field(
+        parent: &Value,
+        key: impl AsRef<str>,
+        is_super: bool,
+    ) -> EvalResult<Option<Value>> {
         match parent {
-            Value::Object(obj) => Ok(obj.borrow().get(key.as_ref()).map(|field| match field {
-                Value::Function(mut f) => {
-                    f.self_param = Some(Rc::new(parent.clone()));
-                    Value::Function(f)
-                }
-                other => other,
-            })),
-            other => Err(EvalError::type_mismatch("Object", other.type_of())),
-        }
-    }
-
-    pub fn get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Value> {
-        match parent {
-            Value::Object(obj) => obj
-                .borrow()
-                .get(key.as_ref())
-                .ok_or_else(|| EvalError::key_not_found(key.as_ref()))
-                .map(|field| match field {
+            Value::Object(obj) => {
+                let obj = obj.borrow();
+                let get = if is_super {
+                    obj.get_super(key.as_ref())
+                } else {
+                    obj.get(key.as_ref())
+                };
+                let value = get.map(|field| match field {
                     Value::Function(mut f) => {
                         f.self_param = Some(Rc::new(parent.clone()));
                         Value::Function(f)
                     }
                     other => other,
-                }),
+                });
+                Ok(value)
+            }
             other => Err(EvalError::type_mismatch("Object", other.type_of())),
         }
+    }
+
+    pub fn try_get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Option<Value>> {
+        Object::try_get_super_field(parent, key, false)
+    }
+
+    pub fn get_super_field(
+        parent: &Value,
+        key: impl AsRef<str>,
+        is_super: bool,
+    ) -> EvalResult<Value> {
+        let key = key.as_ref();
+        Object::try_get_super_field(parent, key, is_super)
+            .and_then(|value| value.ok_or_else(|| EvalError::key_not_found(key)))
+    }
+
+    pub fn get_field(parent: &Value, key: impl AsRef<str>) -> EvalResult<Value> {
+        Object::get_super_field(parent, key, false)
+        // match parent {
+        //     Value::Object(obj) => obj
+        //         .borrow()
+        //         .get(key.as_ref())
+        //         .ok_or_else(|| EvalError::key_not_found(key.as_ref()))
+        //         .map(|field| match field {
+        //             Value::Function(mut f) => {
+        //                 f.self_param = Some(Rc::new(parent.clone()));
+        //                 Value::Function(f)
+        //             }
+        //             other => other,
+        //         }),
+        //     other => Err(EvalError::type_mismatch("Object", other.type_of())),
+        // }
     }
 
     pub fn obj_has_field(parent: Value, key: impl AsRef<str>) -> EvalResult<bool> {
@@ -1935,6 +2014,12 @@ impl Object {
 
     pub fn has_field(&self, key: impl AsRef<str>) -> bool {
         self.get(key).is_some()
+    }
+
+    pub fn get_super(&self, key: impl AsRef<str>) -> Option<Value> {
+        self.proto
+            .as_ref()
+            .and_then(|proto| proto.borrow().get(key).clone())
     }
 
     pub fn get(&self, key: impl AsRef<str>) -> Option<Value> {
@@ -1965,7 +2050,13 @@ impl Object {
     pub fn instance_of(obj: &Ptr<Object>, of: Option<&Ptr<Object>>) -> bool {
         if let Some(of) = of {
             if !ptr_eq(obj.clone(), of.clone()) {
-                Object::instance_of(obj, of.borrow().proto.as_ref())
+                if let Some(proto) = obj.borrow().proto.as_ref() {
+                    Object::instance_of(proto, Some(of))
+                } else {
+                    false
+                }
+
+            // Object::instance_of(obj.borrow().proto.as_ref(), of)
             } else {
                 true
             }

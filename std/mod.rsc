@@ -1,0 +1,1 @@
+pub let type_of = __type_of__;

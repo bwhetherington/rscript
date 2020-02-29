@@ -1,42 +1,55 @@
-pub let Ok = Object();
-pub let Err = Object();
+pub class Result {};
 
-Ok.new = |ok| {
-  self.value = ok;
+pub class Ok : Result {
+  op new(value) = {
+    self.value = value;
+  };
+
+  fn map(f) = Ok(f(self.value));
+
+  fn flat_map(f) = f(self.value);
+
+  op to_string() = "Ok(" + self.value + ")";
+
+  fn unwrap() = self.value;
 };
 
-Ok.map = |f| Ok(f(self.value));
+pub class Err : Result {
+  op new(err) = {
+    self.err = err;
+  };
+  
+  fn map(_) = self;
 
-Ok.flat_map = |f| f(self.value);
+  fn flat_map(_) = self;
 
-Ok.to_string = || "Ok(" + self.value + ")";
-
-Err.new = |err| {
-  self.err = err;
+  op to_string() = "Err(" + self.err + ")";
 };
 
-Err.map = |f| self;
-
-Err.flat_map = |f| self;
-
-Err.to_string = || "Err(" + self.err + ")";
-
-pub let Some = Object();
-
-Some.new = |value| {
-  self.value = value;
+pub class Option {
+  fn from(value) = 
+    if value != None
+    then Some(value)
+    else Nothing;
 };
 
-Some.map = |f| Some(f(self.value));
+pub class Some : Option {
+  op new(value) = {
+    self.value = value;
+  };
 
-Some.flat_map = |f| f(self.value);
+  fn map(f) = Some(f(self.value));
 
-Some.to_string = || "Some(" + self.value + ")";
+  fn flat_map(f) = f(self.value);
 
-pub let Nothing = Object();
+  op to_string() = "Some(" + self.value + ")";
 
-Nothing.map = |f| self;
+  fn unwrap() = self.value;
+};
 
-Nothing.flat_map = |f| self;
-
-Nothing.to_string = || "Nothing";
+pub class Nothing : Option {
+  fn map(_) = self;
+  fn flat_map(_) = self;
+  op to_string() = "Nothing";
+  fn unwrap() = None;
+};
