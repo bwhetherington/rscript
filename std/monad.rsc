@@ -1,6 +1,6 @@
 pub class Result {};
 
-pub class Ok : Result {
+pub class Ok ext Result {
   op new(value) = {
     self.value = value;
   };
@@ -14,7 +14,7 @@ pub class Ok : Result {
   fn unwrap() = self.value;
 };
 
-pub class Err : Result {
+pub class Err ext Result {
   op new(err) = {
     self.err = err;
   };
@@ -33,7 +33,7 @@ pub class Option {
     else Nothing;
 };
 
-pub class Some : Option {
+pub class Some ext Option {
   op new(value) = {
     self.value = value;
   };
@@ -47,7 +47,7 @@ pub class Some : Option {
   fn unwrap() = self.value;
 };
 
-pub class Nothing : Option {
+pub class Nothing ext Option {
   fn map(_) = self;
   fn flat_map(_) = self;
   op to_string() = "Nothing";

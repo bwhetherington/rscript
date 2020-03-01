@@ -74,9 +74,10 @@ pub enum TokenKind {
     None,
     For,
     In,
+    Ext,
 }
 
-const TOKENS: [(&'static str, TokenKind); 22] = [
+const TOKENS: [(&'static str, TokenKind); 23] = [
     ("True", TokenKind::Boolean(true)),
     ("False", TokenKind::Boolean(false)),
     ("None", TokenKind::None),
@@ -99,6 +100,7 @@ const TOKENS: [(&'static str, TokenKind); 22] = [
     ("in", TokenKind::In),
     ("do", TokenKind::Do),
     ("mod", TokenKind::Mod),
+    ("ext", TokenKind::Ext),
 ];
 
 fn is_delimiter(ch: char) -> bool {

@@ -145,7 +145,7 @@ pub struct Engine {
     modules: HashMap<Vec<String>, Value>,
     interned_strings: HashMap<String, Value>,
     cur_module: String,
-    root: Node,
+    pub root: Node,
 }
 
 #[derive(Debug)]
@@ -190,13 +190,7 @@ fn matches_prefix<T: PartialEq + fmt::Debug>(
     prefix: impl Iterator<Item = T>,
     path: impl Iterator<Item = T>,
 ) -> bool {
-    prefix
-        .zip(path)
-        .map(|(a, b)| {
-            println!("{:?} ==? {:?}", a, b);
-            (a, b)
-        })
-        .all(|(a, b)| a == b)
+    prefix.zip(path).all(|(a, b)| a == b)
 }
 
 impl fmt::Display for EvalError {
@@ -1780,7 +1774,7 @@ impl Engine {
         }
     }
 
-    fn value_to_string(&mut self, value: &Value) -> EvalResult<String> {
+    pub fn value_to_string(&mut self, value: &Value) -> EvalResult<String> {
         if let Value::Object(obj) = value {
             // Check for `data` field
             let data = obj.borrow().get("data");

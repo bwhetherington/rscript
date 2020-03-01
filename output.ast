@@ -606,6 +606,19 @@ Module {
                 },
                 Assignment {
                     visibility: Public,
+                    mutable: true,
+                    parameter: "Vec2",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Object",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
                     mutable: false,
                     parameter: "PI",
                     value: Identifier(
@@ -865,19 +878,6 @@ Module {
                                 0.5,
                             ),
                         ),
-                    ),
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: true,
-                    parameter: "Vec2",
-                    value: Call(
-                        Identifier(
-                            [
-                                "Object",
-                            ],
-                        ),
-                        [],
                     ),
                 },
                 Reassignment {
@@ -1433,14 +1433,6 @@ Module {
                 Import {
                     path: [
                         "std",
-                        "monad",
-                        "_",
-                    ],
-                    alias: "_",
-                },
-                Import {
-                    path: [
-                        "std",
                         "prelude",
                         "_",
                     ],
@@ -1519,15 +1511,203 @@ Module {
                     ),
                 },
                 Assignment {
-                    visibility: Public,
-                    mutable: false,
-                    parameter: "p",
-                    value: Identifier(
-                        [
-                            "std",
-                            "prelude",
-                            "println",
-                        ],
+                    visibility: Private,
+                    mutable: true,
+                    parameter: "fizzbuzz",
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                For {
+                                    item: "x",
+                                    iterator: Call(
+                                        Identifier(
+                                            [
+                                                "Range",
+                                            ],
+                                        ),
+                                        [
+                                            Float(
+                                                1.0,
+                                            ),
+                                            Float(
+                                                101.0,
+                                            ),
+                                        ],
+                                    ),
+                                    body: [
+                                        Assignment {
+                                            visibility: Private,
+                                            mutable: false,
+                                            parameter: "line",
+                                            value: String(
+                                                "",
+                                            ),
+                                        },
+                                        Expression(
+                                            If(
+                                                Binary(
+                                                    Equal,
+                                                    Binary(
+                                                        Mod,
+                                                        Identifier(
+                                                            [
+                                                                "x",
+                                                            ],
+                                                        ),
+                                                        Float(
+                                                            3.0,
+                                                        ),
+                                                    ),
+                                                    Float(
+                                                        0.0,
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Reassignment {
+                                                            location: Identifier(
+                                                                [
+                                                                    "line",
+                                                                ],
+                                                            ),
+                                                            value: Binary(
+                                                                Plus,
+                                                                Identifier(
+                                                                    [
+                                                                        "line",
+                                                                    ],
+                                                                ),
+                                                                String(
+                                                                    "Fizz",
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                                None,
+                                            ),
+                                        ),
+                                        Expression(
+                                            If(
+                                                Binary(
+                                                    Equal,
+                                                    Binary(
+                                                        Mod,
+                                                        Identifier(
+                                                            [
+                                                                "x",
+                                                            ],
+                                                        ),
+                                                        Float(
+                                                            5.0,
+                                                        ),
+                                                    ),
+                                                    Float(
+                                                        0.0,
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Reassignment {
+                                                            location: Identifier(
+                                                                [
+                                                                    "line",
+                                                                ],
+                                                            ),
+                                                            value: Binary(
+                                                                Plus,
+                                                                Identifier(
+                                                                    [
+                                                                        "line",
+                                                                    ],
+                                                                ),
+                                                                String(
+                                                                    "Buzz",
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                                None,
+                                            ),
+                                        ),
+                                        Expression(
+                                            If(
+                                                Binary(
+                                                    Equal,
+                                                    Call(
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "line",
+                                                                ],
+                                                            ),
+                                                            "len",
+                                                        ),
+                                                        [],
+                                                    ),
+                                                    Float(
+                                                        0.0,
+                                                    ),
+                                                ),
+                                                Block(
+                                                    [
+                                                        Reassignment {
+                                                            location: Identifier(
+                                                                [
+                                                                    "line",
+                                                                ],
+                                                            ),
+                                                            value: Binary(
+                                                                Plus,
+                                                                String(
+                                                                    "",
+                                                                ),
+                                                                Identifier(
+                                                                    [
+                                                                        "x",
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                    Tuple(
+                                                        [],
+                                                    ),
+                                                ),
+                                                None,
+                                            ),
+                                        ),
+                                        Expression(
+                                            Call(
+                                                Identifier(
+                                                    [
+                                                        "println",
+                                                    ],
+                                                ),
+                                                [
+                                                    Identifier(
+                                                        [
+                                                            "line",
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ],
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
                     ),
                 },
             ],
@@ -1576,61 +1756,6 @@ Module {
                             ],
                         ),
                         [],
-                    ),
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: true,
-                    parameter: "play_game",
-                    value: Lambda(
-                        [
-                            "min",
-                            "max",
-                        ],
-                        Block(
-                            [
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "game",
-                                    value: Call(
-                                        Identifier(
-                                            [
-                                                "Program",
-                                            ],
-                                        ),
-                                        [
-                                            Identifier(
-                                                [
-                                                    "min",
-                                                ],
-                                            ),
-                                            Identifier(
-                                                [
-                                                    "max",
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                },
-                                Expression(
-                                    Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "game",
-                                                ],
-                                            ),
-                                            "start",
-                                        ),
-                                        [],
-                                    ),
-                                ),
-                            ],
-                            Tuple(
-                                [],
-                            ),
-                        ),
                     ),
                 },
                 Reassignment {
@@ -2172,6 +2297,61 @@ Module {
                                         ),
                                     ],
                                 },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: true,
+                    parameter: "play_game",
+                    value: Lambda(
+                        [
+                            "min",
+                            "max",
+                        ],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "game",
+                                    value: Call(
+                                        Identifier(
+                                            [
+                                                "Program",
+                                            ],
+                                        ),
+                                        [
+                                            Identifier(
+                                                [
+                                                    "min",
+                                                ],
+                                            ),
+                                            Identifier(
+                                                [
+                                                    "max",
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                },
+                                Expression(
+                                    Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "game",
+                                                ],
+                                            ),
+                                            "start",
+                                        ),
+                                        [],
+                                    ),
+                                ),
                             ],
                             Tuple(
                                 [],
@@ -2833,181 +3013,10 @@ Module {
                 Import {
                     path: [
                         "std",
-                        "iter",
+                        "math",
                         "_",
                     ],
                     alias: "_",
-                },
-                Import {
-                    path: [
-                        "std",
-                        "hash",
-                        "_",
-                    ],
-                    alias: "_",
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: true,
-                    parameter: "fib_generator",
-                    value: Lambda(
-                        [],
-                        Block(
-                            [
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "state",
-                                    value: Block(
-                                        [
-                                            Assignment {
-                                                visibility: Private,
-                                                mutable: true,
-                                                parameter: "__value__",
-                                                value: Call(
-                                                    Identifier(
-                                                        [
-                                                            "Object",
-                                                        ],
-                                                    ),
-                                                    [],
-                                                ),
-                                            },
-                                            Reassignment {
-                                                location: Member(
-                                                    Identifier(
-                                                        [
-                                                            "__value__",
-                                                        ],
-                                                    ),
-                                                    "a",
-                                                ),
-                                                value: Float(
-                                                    0.0,
-                                                ),
-                                            },
-                                            Reassignment {
-                                                location: Member(
-                                                    Identifier(
-                                                        [
-                                                            "__value__",
-                                                        ],
-                                                    ),
-                                                    "b",
-                                                ),
-                                                value: Float(
-                                                    1.0,
-                                                ),
-                                            },
-                                        ],
-                                        Identifier(
-                                            [
-                                                "__value__",
-                                            ],
-                                        ),
-                                    ),
-                                },
-                            ],
-                            Call(
-                                Identifier(
-                                    [
-                                        "FunctionIterator",
-                                    ],
-                                ),
-                                [
-                                    Identifier(
-                                        [
-                                            "state",
-                                        ],
-                                    ),
-                                    Lambda(
-                                        [
-                                            "state",
-                                        ],
-                                        Block(
-                                            [
-                                                Assignment {
-                                                    visibility: Private,
-                                                    mutable: false,
-                                                    parameter: "next",
-                                                    value: Binary(
-                                                        Plus,
-                                                        Member(
-                                                            Identifier(
-                                                                [
-                                                                    "state",
-                                                                ],
-                                                            ),
-                                                            "a",
-                                                        ),
-                                                        Member(
-                                                            Identifier(
-                                                                [
-                                                                    "state",
-                                                                ],
-                                                            ),
-                                                            "b",
-                                                        ),
-                                                    ),
-                                                },
-                                                Assignment {
-                                                    visibility: Private,
-                                                    mutable: false,
-                                                    parameter: "cur",
-                                                    value: Member(
-                                                        Identifier(
-                                                            [
-                                                                "state",
-                                                            ],
-                                                        ),
-                                                        "a",
-                                                    ),
-                                                },
-                                                Reassignment {
-                                                    location: Member(
-                                                        Identifier(
-                                                            [
-                                                                "state",
-                                                            ],
-                                                        ),
-                                                        "a",
-                                                    ),
-                                                    value: Member(
-                                                        Identifier(
-                                                            [
-                                                                "state",
-                                                            ],
-                                                        ),
-                                                        "b",
-                                                    ),
-                                                },
-                                                Reassignment {
-                                                    location: Member(
-                                                        Identifier(
-                                                            [
-                                                                "state",
-                                                            ],
-                                                        ),
-                                                        "b",
-                                                    ),
-                                                    value: Identifier(
-                                                        [
-                                                            "next",
-                                                        ],
-                                                    ),
-                                                },
-                                            ],
-                                            Identifier(
-                                                [
-                                                    "cur",
-                                                ],
-                                            ),
-                                        ),
-                                    ),
-                                ],
-                            ),
-                        ),
-                    ),
                 },
                 Assignment {
                     visibility: Public,
@@ -3020,135 +3029,98 @@ Module {
                                 Assignment {
                                     visibility: Private,
                                     mutable: false,
-                                    parameter: "set",
+                                    parameter: "map",
                                     value: Call(
                                         Identifier(
                                             [
-                                                "HashSet",
+                                                "HashMap",
                                             ],
                                         ),
                                         [],
                                     ),
                                 },
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "sum",
-                                    value: Binary(
-                                        Plus,
-                                        Call(
-                                            Member(
-                                                List(
-                                                    [
-                                                        Float(
-                                                            1.0,
-                                                        ),
-                                                        Float(
-                                                            2.0,
-                                                        ),
-                                                        Float(
-                                                            3.0,
-                                                        ),
-                                                    ],
-                                                ),
-                                                "iter",
-                                            ),
-                                            [],
-                                        ),
-                                        Call(
-                                            Member(
-                                                List(
-                                                    [
-                                                        Float(
-                                                            4.0,
-                                                        ),
-                                                        Float(
-                                                            5.0,
-                                                        ),
-                                                        Float(
-                                                            6.0,
-                                                        ),
-                                                    ],
-                                                ),
-                                                "iter",
-                                            ),
-                                            [],
-                                        ),
-                                    ),
-                                },
-                                Expression(
-                                    Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "set",
-                                                ],
-                                            ),
-                                            "insert",
-                                        ),
-                                        [
-                                            Float(
-                                                10.0,
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                Expression(
-                                    Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "set",
-                                                ],
-                                            ),
-                                            "insert",
-                                        ),
-                                        [
-                                            Float(
-                                                20.0,
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                Expression(
-                                    Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "set",
-                                                ],
-                                            ),
-                                            "insert",
-                                        ),
-                                        [
-                                            Float(
-                                                30.0,
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                Expression(
-                                    Call(
+                                Reassignment {
+                                    location: Index(
                                         Identifier(
                                             [
-                                                "println",
+                                                "map",
                                             ],
                                         ),
-                                        [
-                                            Call(
-                                                Member(
-                                                    Identifier(
-                                                        [
-                                                            "sum",
-                                                        ],
-                                                    ),
-                                                    "list",
-                                                ),
-                                                [],
-                                            ),
-                                        ],
+                                        String(
+                                            "key1",
+                                        ),
                                     ),
-                                ),
+                                    value: Float(
+                                        10.0,
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Index(
+                                        Identifier(
+                                            [
+                                                "map",
+                                            ],
+                                        ),
+                                        String(
+                                            "key2",
+                                        ),
+                                    ),
+                                    value: Float(
+                                        20.0,
+                                    ),
+                                },
+                                For {
+                                    item: "entry",
+                                    iterator: Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "map",
+                                                ],
+                                            ),
+                                            "iter",
+                                        ),
+                                        [],
+                                    ),
+                                    body: [
+                                        Expression(
+                                            Call(
+                                                Identifier(
+                                                    [
+                                                        "println",
+                                                    ],
+                                                ),
+                                                [
+                                                    Binary(
+                                                        Plus,
+                                                        Binary(
+                                                            Plus,
+                                                            Member(
+                                                                Identifier(
+                                                                    [
+                                                                        "entry",
+                                                                    ],
+                                                                ),
+                                                                "key",
+                                                            ),
+                                                            String(
+                                                                ": ",
+                                                            ),
+                                                        ),
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "entry",
+                                                                ],
+                                                            ),
+                                                            "value",
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ],
+                                },
                             ],
                             Tuple(
                                 [],
@@ -4126,38 +4098,6 @@ Module {
                     alias: "_",
                 },
                 Assignment {
-                    visibility: Private,
-                    mutable: false,
-                    parameter: "INITIAL_CAPACITY",
-                    value: Float(
-                        10.0,
-                    ),
-                },
-                Assignment {
-                    visibility: Private,
-                    mutable: false,
-                    parameter: "RATIO",
-                    value: Binary(
-                        Divide,
-                        Float(
-                            2.0,
-                        ),
-                        Float(
-                            3.0,
-                        ),
-                    ),
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: false,
-                    parameter: "hash",
-                    value: Identifier(
-                        [
-                            "__hash__",
-                        ],
-                    ),
-                },
-                Assignment {
                     visibility: Public,
                     mutable: true,
                     parameter: "Entry",
@@ -4194,6 +4134,38 @@ Module {
                             ],
                         ),
                         [],
+                    ),
+                },
+                Assignment {
+                    visibility: Private,
+                    mutable: false,
+                    parameter: "INITIAL_CAPACITY",
+                    value: Float(
+                        10.0,
+                    ),
+                },
+                Assignment {
+                    visibility: Private,
+                    mutable: false,
+                    parameter: "RATIO",
+                    value: Binary(
+                        Divide,
+                        Float(
+                            2.0,
+                        ),
+                        Float(
+                            3.0,
+                        ),
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: false,
+                    parameter: "hash",
+                    value: Identifier(
+                        [
+                            "__hash__",
+                        ],
                     ),
                 },
                 Reassignment {
@@ -5068,28 +5040,6 @@ Module {
                         ],
                         Block(
                             [
-                                Assignment {
-                                    visibility: Private,
-                                    mutable: false,
-                                    parameter: "entry",
-                                    value: Call(
-                                        Member(
-                                            Identifier(
-                                                [
-                                                    "self",
-                                                ],
-                                            ),
-                                            "get_entry_or_insert",
-                                        ),
-                                        [
-                                            Identifier(
-                                                [
-                                                    "key",
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                },
                                 Expression(
                                     If(
                                         Binary(
@@ -5154,6 +5104,28 @@ Module {
                                         None,
                                     ),
                                 ),
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "entry",
+                                    value: Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "self",
+                                                ],
+                                            ),
+                                            "get_entry_or_insert",
+                                        ),
+                                        [
+                                            Identifier(
+                                                [
+                                                    "key",
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                },
                                 Reassignment {
                                     location: Member(
                                         Identifier(
@@ -8104,6 +8076,19 @@ Module {
                     alias: "time",
                 },
                 Assignment {
+                    visibility: Public,
+                    mutable: true,
+                    parameter: "Rng",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                Assignment {
                     visibility: Private,
                     mutable: false,
                     parameter: "A",
@@ -8125,44 +8110,6 @@ Module {
                     parameter: "M",
                     value: Float(
                         4294967296.0,
-                    ),
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: true,
-                    parameter: "Rng",
-                    value: Call(
-                        Identifier(
-                            [
-                                "Iterator",
-                            ],
-                        ),
-                        [],
-                    ),
-                },
-                Assignment {
-                    visibility: Public,
-                    mutable: true,
-                    parameter: "rng",
-                    value: Lambda(
-                        [],
-                        Call(
-                            Identifier(
-                                [
-                                    "Rng",
-                                ],
-                            ),
-                            [
-                                Call(
-                                    Identifier(
-                                        [
-                                            "time",
-                                        ],
-                                    ),
-                                    [],
-                                ),
-                            ],
-                        ),
                     ),
                 },
                 Reassignment {
@@ -8364,6 +8311,31 @@ Module {
                                             ],
                                         ),
                                     ),
+                                ),
+                            ],
+                        ),
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: true,
+                    parameter: "rng",
+                    value: Lambda(
+                        [],
+                        Call(
+                            Identifier(
+                                [
+                                    "Rng",
+                                ],
+                            ),
+                            [
+                                Call(
+                                    Identifier(
+                                        [
+                                            "time",
+                                        ],
+                                    ),
+                                    [],
                                 ),
                             ],
                         ),

@@ -2,7 +2,7 @@ import std::iter::Range;
 import std::rand::rng;
 import std::io::println;
 
-pub class Slice : List {
+pub class Slice ext List {
   op new(list, from, to) = {
     self.list = list;
     self.from = from;

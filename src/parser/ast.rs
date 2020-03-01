@@ -972,7 +972,7 @@ impl<I: TokenIter> Parser<I> {
                 let identifier = self.parse_identifier()?;
                 let tok = self.next_token_internal()?;
                 let parent = match tok.kind {
-                    TokenKind::Colon => {
+                    TokenKind::Ext => {
                         // Get parent class
                         Some(self.parse_full_identifier()?)
                     }
@@ -1358,6 +1358,8 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
                     value: proto,
                 };
 
+                class_forward_declarations.push(forward);
+
                 for statement in body {
                     match statement {
                         Statement::FunctionDeclaration {
@@ -1378,7 +1380,7 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
                                 location,
                                 value: lambda,
                             };
-                            others.push(assignment);
+                            assignments.push(assignment);
                         }
                         Statement::Assignment {
                             parameter, value, ..
@@ -1389,7 +1391,7 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
                                 parameter,
                             );
                             let assignment = Statement::Reassignment { location, value };
-                            others.push(assignment);
+                            assignments.push(assignment);
                         }
                         _ => todo!(),
                     }
@@ -1401,8 +1403,6 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
                 //     parent,
                 //     body,
                 // };
-
-                assignments.push(forward);
                 // assignments.push(class);
             }
             assignment @ Statement::Assignment { .. } => {
@@ -1424,7 +1424,7 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
                 assignments.push(assignment);
             }
             other => {
-                others.push(other);
+                assignments.push(other);
             }
         }
     }

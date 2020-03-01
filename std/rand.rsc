@@ -6,7 +6,7 @@ let A = 1664525;
 let C = 1013904223;
 let M = 4294967296;
 
-pub class Rng : Iterator {
+pub class Rng ext Iterator {
   op new(seed) = {
     self.current = seed % M;
     self.next();

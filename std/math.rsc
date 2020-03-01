@@ -61,3 +61,14 @@ pub class Vec2 {
   
   op to_string() = "(" + self.x + ", " + self.y + ")";
 };
+
+pub class Either {
+  op new(a, b) = {
+    self.a = a;
+    self.b = b;
+  };
+
+  op plus(other) = {
+    
+  };
+};

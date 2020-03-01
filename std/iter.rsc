@@ -69,7 +69,7 @@ pub class Iterator {
   op plus(other) = self.zip_with(other, |a, b| a + b);
 };
 
-class PeekableIterator : Iterator {
+class PeekableIterator ext Iterator {
   op new(iter) = {
     self.iter = iter;
     self.queue = [];
@@ -89,7 +89,7 @@ class PeekableIterator : Iterator {
   };
 };
 
-class IndexIterator : Iterator {
+class IndexIterator ext Iterator {
   op new(list) = {
     self.list = list;
     self.end = list.len();
@@ -113,7 +113,7 @@ String.iter = || {
   IndexIterator(self)
 };
 
-class FilterIterator : Iterator {
+class FilterIterator ext Iterator {
   op new(iter, pred) = {
     self.iter = iter;
     self.pred = pred;
@@ -131,7 +131,7 @@ class FilterIterator : Iterator {
   };
 };
 
-class MapIterator : Iterator {
+class MapIterator ext Iterator {
   op new(iter, map) = {
     self.iter = iter;
     self.map = map;
@@ -143,7 +143,7 @@ class MapIterator : Iterator {
   };
 };
 
-class TakeIterator : Iterator {
+class TakeIterator ext Iterator {
   op new(iter, num) = {
     self.iter = iter;
     self.max = num;
@@ -158,7 +158,7 @@ class TakeIterator : Iterator {
   };
 };
 
-pub class Range : Iterator {
+pub class Range ext Iterator {
   op new(from, to) = {
     self.from = from;
     self.to = to;
@@ -173,7 +173,7 @@ pub class Range : Iterator {
   };
 };
 
-class SkipIterator : Iterator {
+class SkipIterator ext Iterator {
   op new(iter, num) = {
     self.iter = iter;
     for i in Range(0, num) do {
@@ -184,7 +184,7 @@ class SkipIterator : Iterator {
   op next() = self.iter.next();
 };
 
-class ZipIterator : Iterator {
+class ZipIterator ext Iterator {
   op new(a, b) = {
     self.a = a;
     self.b = b;
@@ -199,7 +199,7 @@ class ZipIterator : Iterator {
   };
 };
 
-pub class FunctionIterator : Iterator {
+pub class FunctionIterator ext Iterator {
   op new(state, func) = {
     self.func = func;
     self.state = state;
