@@ -1,4 +1,5 @@
 import std::iter::Range;
+import std::io::println;
 
 String.equals = |other| {
   if self.len() == other.len() then {
@@ -51,4 +52,15 @@ String.split = |delim| {
   };
 
   strs
+};
+
+String.from = |items, delim| {
+  let s = "";
+  if items.len() > 0 then {
+    for i in Range(0, items.len() - 1) do {
+      s = s + items[i] + delim;
+    };
+    s = s + items[items.len() - 1];
+  };
+  s
 };

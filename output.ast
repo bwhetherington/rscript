@@ -24,6 +24,14 @@ Module {
                     ],
                     alias: "Range",
                 },
+                Import {
+                    path: [
+                        "std",
+                        "io",
+                        "println",
+                    ],
+                    alias: "println",
+                },
                 Reassignment {
                     location: Member(
                         Identifier(
@@ -537,6 +545,176 @@ Module {
                         ),
                     ),
                 },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "String",
+                            ],
+                        ),
+                        "from",
+                    ),
+                    value: Lambda(
+                        [
+                            "items",
+                            "delim",
+                        ],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "s",
+                                    value: String(
+                                        "",
+                                    ),
+                                },
+                                Expression(
+                                    If(
+                                        Binary(
+                                            GT,
+                                            Call(
+                                                Member(
+                                                    Identifier(
+                                                        [
+                                                            "items",
+                                                        ],
+                                                    ),
+                                                    "len",
+                                                ),
+                                                [],
+                                            ),
+                                            Float(
+                                                0.0,
+                                            ),
+                                        ),
+                                        Block(
+                                            [
+                                                For {
+                                                    item: "i",
+                                                    iterator: Call(
+                                                        Identifier(
+                                                            [
+                                                                "Range",
+                                                            ],
+                                                        ),
+                                                        [
+                                                            Float(
+                                                                0.0,
+                                                            ),
+                                                            Binary(
+                                                                Minus,
+                                                                Call(
+                                                                    Member(
+                                                                        Identifier(
+                                                                            [
+                                                                                "items",
+                                                                            ],
+                                                                        ),
+                                                                        "len",
+                                                                    ),
+                                                                    [],
+                                                                ),
+                                                                Float(
+                                                                    1.0,
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    body: [
+                                                        Reassignment {
+                                                            location: Identifier(
+                                                                [
+                                                                    "s",
+                                                                ],
+                                                            ),
+                                                            value: Binary(
+                                                                Plus,
+                                                                Binary(
+                                                                    Plus,
+                                                                    Identifier(
+                                                                        [
+                                                                            "s",
+                                                                        ],
+                                                                    ),
+                                                                    Index(
+                                                                        Identifier(
+                                                                            [
+                                                                                "items",
+                                                                            ],
+                                                                        ),
+                                                                        Identifier(
+                                                                            [
+                                                                                "i",
+                                                                            ],
+                                                                        ),
+                                                                    ),
+                                                                ),
+                                                                Identifier(
+                                                                    [
+                                                                        "delim",
+                                                                    ],
+                                                                ),
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                                Reassignment {
+                                                    location: Identifier(
+                                                        [
+                                                            "s",
+                                                        ],
+                                                    ),
+                                                    value: Binary(
+                                                        Plus,
+                                                        Identifier(
+                                                            [
+                                                                "s",
+                                                            ],
+                                                        ),
+                                                        Index(
+                                                            Identifier(
+                                                                [
+                                                                    "items",
+                                                                ],
+                                                            ),
+                                                            Binary(
+                                                                Minus,
+                                                                Call(
+                                                                    Member(
+                                                                        Identifier(
+                                                                            [
+                                                                                "items",
+                                                                            ],
+                                                                        ),
+                                                                        "len",
+                                                                    ),
+                                                                    [],
+                                                                ),
+                                                                Float(
+                                                                    1.0,
+                                                                ),
+                                                            ),
+                                                        ),
+                                                    ),
+                                                },
+                                            ],
+                                            Tuple(
+                                                [],
+                                            ),
+                                        ),
+                                        None,
+                                    ),
+                                ),
+                            ],
+                            Identifier(
+                                [
+                                    "s",
+                                ],
+                            ),
+                        ),
+                    ),
+                },
             ],
             children: [],
         },
@@ -608,6 +786,19 @@ Module {
                     visibility: Public,
                     mutable: true,
                     parameter: "Vec2",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Object",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                Assignment {
+                    visibility: Public,
+                    mutable: true,
+                    parameter: "Either",
                     value: Call(
                         Identifier(
                             [
@@ -1421,6 +1612,77 @@ Module {
                             String(
                                 ")",
                             ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Either",
+                            ],
+                        ),
+                        "new",
+                    ),
+                    value: Lambda(
+                        [
+                            "a",
+                            "b",
+                        ],
+                        Block(
+                            [
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "a",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "a",
+                                        ],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "b",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "b",
+                                        ],
+                                    ),
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Either",
+                            ],
+                        ),
+                        "plus",
+                    ),
+                    value: Lambda(
+                        [
+                            "other",
+                        ],
+                        Tuple(
+                            [],
                         ),
                     ),
                 },
@@ -3078,7 +3340,7 @@ Module {
                                                     "map",
                                                 ],
                                             ),
-                                            "iter",
+                                            "entries",
                                         ),
                                         [],
                                     ),
@@ -5482,6 +5744,124 @@ Module {
                     location: Member(
                         Identifier(
                             [
+                                "HashMap",
+                            ],
+                        ),
+                        "to_string",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "s",
+                                    value: String(
+                                        "{",
+                                    ),
+                                },
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "inner",
+                                    value: Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "String",
+                                                ],
+                                            ),
+                                            "from",
+                                        ),
+                                        [
+                                            Call(
+                                                Member(
+                                                    Call(
+                                                        Member(
+                                                            Call(
+                                                                Member(
+                                                                    Identifier(
+                                                                        [
+                                                                            "self",
+                                                                        ],
+                                                                    ),
+                                                                    "entries",
+                                                                ),
+                                                                [],
+                                                            ),
+                                                            "map",
+                                                        ),
+                                                        [
+                                                            Lambda(
+                                                                [
+                                                                    "entry",
+                                                                ],
+                                                                Binary(
+                                                                    Plus,
+                                                                    Binary(
+                                                                        Plus,
+                                                                        Member(
+                                                                            Identifier(
+                                                                                [
+                                                                                    "entry",
+                                                                                ],
+                                                                            ),
+                                                                            "key",
+                                                                        ),
+                                                                        String(
+                                                                            ": ",
+                                                                        ),
+                                                                    ),
+                                                                    Member(
+                                                                        Identifier(
+                                                                            [
+                                                                                "entry",
+                                                                            ],
+                                                                        ),
+                                                                        "value",
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    "list",
+                                                ),
+                                                [],
+                                            ),
+                                            String(
+                                                ", ",
+                                            ),
+                                        ],
+                                    ),
+                                },
+                            ],
+                            Binary(
+                                Plus,
+                                Binary(
+                                    Plus,
+                                    Identifier(
+                                        [
+                                            "s",
+                                        ],
+                                    ),
+                                    Identifier(
+                                        [
+                                            "inner",
+                                        ],
+                                    ),
+                                ),
+                                String(
+                                    "}",
+                                ),
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
                                 "HashSet",
                             ],
                         ),
@@ -5681,6 +6061,87 @@ Module {
                                     ),
                                 ),
                             ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "HashSet",
+                            ],
+                        ),
+                        "to_string",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "s",
+                                    value: String(
+                                        "{",
+                                    ),
+                                },
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "inner",
+                                    value: Call(
+                                        Member(
+                                            Identifier(
+                                                [
+                                                    "String",
+                                                ],
+                                            ),
+                                            "from",
+                                        ),
+                                        [
+                                            Call(
+                                                Member(
+                                                    Call(
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "self",
+                                                                ],
+                                                            ),
+                                                            "iter",
+                                                        ),
+                                                        [],
+                                                    ),
+                                                    "list",
+                                                ),
+                                                [],
+                                            ),
+                                            String(
+                                                ", ",
+                                            ),
+                                        ],
+                                    ),
+                                },
+                            ],
+                            Binary(
+                                Plus,
+                                Binary(
+                                    Plus,
+                                    Identifier(
+                                        [
+                                            "s",
+                                        ],
+                                    ),
+                                    Identifier(
+                                        [
+                                            "inner",
+                                        ],
+                                    ),
+                                ),
+                                String(
+                                    "}",
+                                ),
+                            ),
                         ),
                     ),
                 },

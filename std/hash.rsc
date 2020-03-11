@@ -127,6 +127,12 @@ pub class HashMap {
       then entry.value != None 
       else False
   };
+
+  op to_string() = {
+    let s = "{";
+    let inner = String.from(self.entries().map(|entry| entry.key + ": " + entry.value).list(), ", ");
+    s + inner + "}"
+  };
 };
 
 pub class HashSet {
@@ -147,4 +153,10 @@ pub class HashSet {
   fn iter() = self.map
     .entries()
     .map(|entry| entry.key);
+
+  op to_string() = {
+    let s = "{";
+    let inner = String.from(self.iter().list(), ", ");
+    s + inner + "}"
+  };
 };

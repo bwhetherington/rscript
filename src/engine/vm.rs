@@ -714,12 +714,12 @@ impl Engine {
         Ok(())
     }
 
-    fn make_string(&mut self, s: impl Into<String>) -> EvalResult<Value> {
+    pub fn make_string(&mut self, s: impl Into<String>) -> EvalResult<Value> {
         let buf = Value::String(s.into().into());
         self.create_backed_object("String", buf)
     }
 
-    fn make_list(&mut self, vals: Vec<Value>) -> EvalResult<Value> {
+    pub fn make_list(&mut self, vals: Vec<Value>) -> EvalResult<Value> {
         let buf = Value::List(ptr(vals));
         self.create_backed_object("List", buf)
     }
