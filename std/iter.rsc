@@ -14,6 +14,8 @@ pub class Iterator {
   # this iterator.
   fn take(count) = TakeIterator(self, count);
 
+  fn take_while(pred) = TakeWhileIterator(self, pred);
+
   # Produces a new iterator that produces only elements after the first `count`
   # elements from this iterator.
   fn skip(count) = SkipIterator(self, count);
@@ -154,6 +156,22 @@ class TakeIterator ext Iterator {
     if self.cur < self.max then {
       self.cur = self.cur + 1;
       self.iter.next()
+    }
+  };
+};
+
+class TakeWhileIterator ext Iterator {
+  op new(iter, pred) = {
+    self.iter = iter;
+    self.pred = pred;
+  };
+
+  op next() = {
+    let cur = self.iter.next();
+    if self.pred(cur) then {
+      cur
+    } else {
+      None
     }
   };
 };

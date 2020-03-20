@@ -3280,6 +3280,177 @@ Module {
                     ],
                     alias: "_",
                 },
+                Import {
+                    path: [
+                        "std",
+                        "iter",
+                        "_",
+                    ],
+                    alias: "_",
+                },
+                Assignment {
+                    visibility: Private,
+                    mutable: true,
+                    parameter: "fib_gen",
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "state",
+                                    value: Block(
+                                        [
+                                            Assignment {
+                                                visibility: Private,
+                                                mutable: true,
+                                                parameter: "__value__",
+                                                value: Call(
+                                                    Identifier(
+                                                        [
+                                                            "Object",
+                                                        ],
+                                                    ),
+                                                    [],
+                                                ),
+                                            },
+                                            Reassignment {
+                                                location: Member(
+                                                    Identifier(
+                                                        [
+                                                            "__value__",
+                                                        ],
+                                                    ),
+                                                    "term1",
+                                                ),
+                                                value: Float(
+                                                    1.0,
+                                                ),
+                                            },
+                                            Reassignment {
+                                                location: Member(
+                                                    Identifier(
+                                                        [
+                                                            "__value__",
+                                                        ],
+                                                    ),
+                                                    "term2",
+                                                ),
+                                                value: Float(
+                                                    1.0,
+                                                ),
+                                            },
+                                        ],
+                                        Identifier(
+                                            [
+                                                "__value__",
+                                            ],
+                                        ),
+                                    ),
+                                },
+                            ],
+                            Call(
+                                Identifier(
+                                    [
+                                        "FunctionIterator",
+                                    ],
+                                ),
+                                [
+                                    Identifier(
+                                        [
+                                            "state",
+                                        ],
+                                    ),
+                                    Lambda(
+                                        [
+                                            "state",
+                                        ],
+                                        Block(
+                                            [
+                                                Assignment {
+                                                    visibility: Private,
+                                                    mutable: false,
+                                                    parameter: "prev",
+                                                    value: Member(
+                                                        Identifier(
+                                                            [
+                                                                "state",
+                                                            ],
+                                                        ),
+                                                        "term1",
+                                                    ),
+                                                },
+                                                Assignment {
+                                                    visibility: Private,
+                                                    mutable: false,
+                                                    parameter: "next",
+                                                    value: Binary(
+                                                        Plus,
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "state",
+                                                                ],
+                                                            ),
+                                                            "term1",
+                                                        ),
+                                                        Member(
+                                                            Identifier(
+                                                                [
+                                                                    "state",
+                                                                ],
+                                                            ),
+                                                            "term2",
+                                                        ),
+                                                    ),
+                                                },
+                                                Reassignment {
+                                                    location: Member(
+                                                        Identifier(
+                                                            [
+                                                                "state",
+                                                            ],
+                                                        ),
+                                                        "term1",
+                                                    ),
+                                                    value: Member(
+                                                        Identifier(
+                                                            [
+                                                                "state",
+                                                            ],
+                                                        ),
+                                                        "term2",
+                                                    ),
+                                                },
+                                                Reassignment {
+                                                    location: Member(
+                                                        Identifier(
+                                                            [
+                                                                "state",
+                                                            ],
+                                                        ),
+                                                        "term2",
+                                                    ),
+                                                    value: Identifier(
+                                                        [
+                                                            "next",
+                                                        ],
+                                                    ),
+                                                },
+                                            ],
+                                            Identifier(
+                                                [
+                                                    "prev",
+                                                ],
+                                            ),
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                },
                 Assignment {
                     visibility: Public,
                     mutable: true,
@@ -3291,98 +3462,90 @@ Module {
                                 Assignment {
                                     visibility: Private,
                                     mutable: false,
-                                    parameter: "map",
+                                    parameter: "sum",
                                     value: Call(
-                                        Identifier(
-                                            [
-                                                "HashMap",
-                                            ],
-                                        ),
-                                        [],
-                                    ),
-                                },
-                                Reassignment {
-                                    location: Index(
-                                        Identifier(
-                                            [
-                                                "map",
-                                            ],
-                                        ),
-                                        String(
-                                            "key1",
-                                        ),
-                                    ),
-                                    value: Float(
-                                        10.0,
-                                    ),
-                                },
-                                Reassignment {
-                                    location: Index(
-                                        Identifier(
-                                            [
-                                                "map",
-                                            ],
-                                        ),
-                                        String(
-                                            "key2",
-                                        ),
-                                    ),
-                                    value: Float(
-                                        20.0,
-                                    ),
-                                },
-                                For {
-                                    item: "entry",
-                                    iterator: Call(
                                         Member(
-                                            Identifier(
-                                                [
-                                                    "map",
-                                                ],
-                                            ),
-                                            "entries",
-                                        ),
-                                        [],
-                                    ),
-                                    body: [
-                                        Expression(
                                             Call(
-                                                Identifier(
-                                                    [
-                                                        "println",
-                                                    ],
-                                                ),
-                                                [
-                                                    Binary(
-                                                        Plus,
-                                                        Binary(
-                                                            Plus,
-                                                            Member(
+                                                Member(
+                                                    Call(
+                                                        Member(
+                                                            Call(
                                                                 Identifier(
                                                                     [
-                                                                        "entry",
+                                                                        "fib_gen",
                                                                     ],
                                                                 ),
-                                                                "key",
+                                                                [],
                                                             ),
-                                                            String(
-                                                                ": ",
-                                                            ),
+                                                            "filter",
                                                         ),
-                                                        Member(
+                                                        [
+                                                            Lambda(
+                                                                [
+                                                                    "x",
+                                                                ],
+                                                                Binary(
+                                                                    Equal,
+                                                                    Binary(
+                                                                        Mod,
+                                                                        Identifier(
+                                                                            [
+                                                                                "x",
+                                                                            ],
+                                                                        ),
+                                                                        Float(
+                                                                            2.0,
+                                                                        ),
+                                                                    ),
+                                                                    Float(
+                                                                        0.0,
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    "take_while",
+                                                ),
+                                                [
+                                                    Lambda(
+                                                        [
+                                                            "x",
+                                                        ],
+                                                        Binary(
+                                                            LT,
                                                             Identifier(
                                                                 [
-                                                                    "entry",
+                                                                    "x",
                                                                 ],
                                                             ),
-                                                            "value",
+                                                            Float(
+                                                                4000000.0,
+                                                            ),
                                                         ),
                                                     ),
                                                 ],
                                             ),
+                                            "sum",
                                         ),
-                                    ],
+                                        [],
+                                    ),
                                 },
+                                Expression(
+                                    Call(
+                                        Identifier(
+                                            [
+                                                "println",
+                                            ],
+                                        ),
+                                        [
+                                            Identifier(
+                                                [
+                                                    "sum",
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                ),
                             ],
                             Tuple(
                                 [],
@@ -6230,6 +6393,19 @@ Module {
                     ),
                 },
                 Assignment {
+                    visibility: Private,
+                    mutable: true,
+                    parameter: "TakeWhileIterator",
+                    value: Call(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        [],
+                    ),
+                },
+                Assignment {
                     visibility: Public,
                     mutable: true,
                     parameter: "Range",
@@ -6391,6 +6567,40 @@ Module {
                                 Identifier(
                                     [
                                         "count",
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "Iterator",
+                            ],
+                        ),
+                        "take_while",
+                    ),
+                    value: Lambda(
+                        [
+                            "pred",
+                        ],
+                        Call(
+                            Identifier(
+                                [
+                                    "TakeWhileIterator",
+                                ],
+                            ),
+                            [
+                                Identifier(
+                                    [
+                                        "self",
+                                    ],
+                                ),
+                                Identifier(
+                                    [
+                                        "pred",
                                     ],
                                 ),
                             ],
@@ -7758,6 +7968,120 @@ Module {
                                 ),
                             ),
                             None,
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "TakeWhileIterator",
+                            ],
+                        ),
+                        "new",
+                    ),
+                    value: Lambda(
+                        [
+                            "iter",
+                            "pred",
+                        ],
+                        Block(
+                            [
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "iter",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "iter",
+                                        ],
+                                    ),
+                                },
+                                Reassignment {
+                                    location: Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "pred",
+                                    ),
+                                    value: Identifier(
+                                        [
+                                            "pred",
+                                        ],
+                                    ),
+                                },
+                            ],
+                            Tuple(
+                                [],
+                            ),
+                        ),
+                    ),
+                },
+                Reassignment {
+                    location: Member(
+                        Identifier(
+                            [
+                                "TakeWhileIterator",
+                            ],
+                        ),
+                        "next",
+                    ),
+                    value: Lambda(
+                        [],
+                        Block(
+                            [
+                                Assignment {
+                                    visibility: Private,
+                                    mutable: false,
+                                    parameter: "cur",
+                                    value: Call(
+                                        Member(
+                                            Member(
+                                                Identifier(
+                                                    [
+                                                        "self",
+                                                    ],
+                                                ),
+                                                "iter",
+                                            ),
+                                            "next",
+                                        ),
+                                        [],
+                                    ),
+                                },
+                            ],
+                            If(
+                                Call(
+                                    Member(
+                                        Identifier(
+                                            [
+                                                "self",
+                                            ],
+                                        ),
+                                        "pred",
+                                    ),
+                                    [
+                                        Identifier(
+                                            [
+                                                "cur",
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Identifier(
+                                    [
+                                        "cur",
+                                    ],
+                                ),
+                                None,
+                            ),
                         ),
                     ),
                 },

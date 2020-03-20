@@ -4,7 +4,7 @@ use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet},
     error::Error,
     hash::{Hash, Hasher},
-    rc::Rc,
+    rc::{Rc, Weak},
 };
 
 pub fn is_usize(num: f64) -> bool {
@@ -1871,6 +1871,8 @@ pub struct Function {
 }
 
 type Ptr<T> = Rc<RefCell<T>>;
+
+type WeakPtr<T> = Weak<RefCell<T>>;
 
 #[inline]
 fn ptr<T>(val: T) -> Ptr<T> {

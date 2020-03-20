@@ -919,7 +919,7 @@ impl<I: TokenIter> Parser<I> {
         let name = self.parse_identifier()?;
 
         // Check name
-        if OPERATOR_NAMES.into_iter().any(|el| *el == name) {
+        if OPERATOR_NAMES.iter().any(|el| *el == name) {
             self.parse_token(TokenKind::OpenParen)?;
             let parameters = self
                 .parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
@@ -942,7 +942,7 @@ impl<I: TokenIter> Parser<I> {
         let name = self.parse_identifier()?;
 
         // Check name
-        if OPERATOR_NAMES.into_iter().all(|el| *el != name) {
+        if OPERATOR_NAMES.iter().all(|el| *el != name) {
             self.parse_token(TokenKind::OpenParen)?;
             let parameters = self
                 .parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
