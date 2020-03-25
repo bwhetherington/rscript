@@ -80,7 +80,7 @@ fn print_with_pointer(s: &str, ptr: &parser::Span) {
 //     Ok(())
 // }
 
-#[allow(unused)]
+// #[allow(unused)]
 fn parse_ast(module: &str) -> Result<Module, Box<dyn Error>> {
     let module = parse_module(module)?;
     let data = format!("{:#?}", module);
@@ -132,6 +132,7 @@ fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error
 
 fn load_std(engine: &mut Engine) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("RSC_HOME")?;
+    // let home = "test_mod";
     let module = parse_ast(&home)?;
     engine.preload_module(&module);
     engine.load_module(&module, false)?;

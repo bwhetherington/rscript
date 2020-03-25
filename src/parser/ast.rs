@@ -89,6 +89,16 @@ pub enum Expression {
     None,
 }
 
+impl Expression {
+    pub fn requires_semicolon(&self) -> bool {
+        match self {
+            Self::If(..) => true,
+            Self::Block(..) => true,
+            _ => false,
+        }
+    }
+}
+
 static OPERATOR_NAMES: [&'static str; 9] = [
     "new",
     "plus",
@@ -224,6 +234,17 @@ impl Statement {
             | Assignment { .. }
             | Reassignment { .. } => true,
             _ => false,
+        }
+    }
+
+    pub fn requires_semicolon(&self) -> bool {
+        match self {
+            Self::ClassDeclaration { .. } => false,
+            Self::For { .. } => false,
+            Self::Loop { .. } => false,
+            Self::While { .. } => false,
+            Self::Expression(expr) => expr.requires_semicolon(),
+            _ => true,
         }
     }
 }
@@ -1067,10 +1088,13 @@ impl<I: TokenIter> Parser<I> {
                             finished = true;
                             break;
                         }
+                        TokenKind::Semicolon => (),
                         _ => {
                             self.unread(tok);
-                            let statement = self.parse_statement()?;
-                            self.parse_semicolon()?;
+                            let statement = self.read_statement_maybe_semicolon()?;
+                            if statement.requires_semicolon() {
+                                self.parse_semicolon()?;
+                            }
                             statements.push(statement);
                         }
                     }
@@ -1101,10 +1125,13 @@ impl<I: TokenIter> Parser<I> {
                             finished = true;
                             break;
                         }
+                        TokenKind::Semicolon => (),
                         _ => {
                             self.unread(tok);
-                            let statement = self.parse_statement()?;
-                            self.parse_semicolon()?;
+                            let statement = self.read_statement_maybe_semicolon()?;
+                            if statement.requires_semicolon() {
+                                self.parse_semicolon()?;
+                            }
                             statements.push(statement);
                         }
                     }
@@ -1137,10 +1164,13 @@ impl<I: TokenIter> Parser<I> {
                             finished = true;
                             break;
                         }
+                        TokenKind::Semicolon => (),
                         _ => {
                             self.unread(tok);
-                            let statement = self.parse_statement()?;
-                            self.parse_semicolon()?;
+                            let statement = self.read_statement_maybe_semicolon()?;
+                            if statement.requires_semicolon() {
+                                self.parse_semicolon()?;
+                            }
                             statements.push(statement);
                         }
                     }
@@ -1193,15 +1223,22 @@ impl<I: TokenIter> Parser<I> {
         self.parse_statement_visibility(visibility)
     }
 
-    fn parse_class(&mut self) -> ParseResult<Vec<Statement>> {
-        let mut statements = Vec::new();
-
-        while let Some(tok) = self.next_token()? {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        Ok(statements)
+    fn read_statement_maybe_semicolon(&mut self) -> ParseResult<Statement> {
+        let statement = self.parse_statement()?;
+        // if !statement.requires_semicolon() {
+        //     let semicolon = Token {
+        //         kind: TokenKind::Semicolon,
+        //         span: Span {
+        //             col: 0,
+        //             row: 0,
+        //             len: 0,
+        //             file: None,
+        //         },
+        //     };
+        //     // Check next token
+        //     self.unread(semicolon);
+        // }
+        Ok(statement)
     }
 
     // { statement ; statement ; [expression]? }
@@ -1211,11 +1248,16 @@ impl<I: TokenIter> Parser<I> {
         let token = self.next_token_internal()?;
         match token.kind {
             TokenKind::CloseBrace => return Ok(()),
-            _ => self.unread(token),
+            TokenKind::Semicolon => {
+                println!("Ignore semicolon: {:?}", token);
+            }
+            _ => {
+                println!("{:?}", token);
+                self.unread(token)
+            }
         }
 
-        let statement = self.parse_statement()?;
-
+        let statement = self.read_statement_maybe_semicolon()?;
         let token = self.next_token_internal()?;
         match &token.kind {
             TokenKind::CloseBrace => match statement {
@@ -1312,7 +1354,7 @@ impl<I: TokenIter> Parser<I> {
         while let Some(token) = self.next_token()? {
             self.unread(token);
             let statement = self.parse_statement()?;
-            self.parse_semicolon();
+            self.parse_semicolon()?;
             buf.push(statement);
         }
         buf = hoist_assignments(buf);

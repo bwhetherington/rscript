@@ -68,7 +68,27 @@ pub class Iterator {
     };
   };
 
-  op plus(other) = self.zip_with(other, |a, b| a + b);
+  fn all(pred) = {
+    let res = True;
+    for x in self do {
+      if !pred(x) then {
+        res = False;
+        break;
+      };
+    };
+    res
+  };
+
+  fn any(pred) = {
+    let res = False;
+    for x in self do {
+      if pred(x) then {
+        res = True;
+        break;
+      };
+    };
+    res
+  };
 };
 
 class PeekableIterator ext Iterator {

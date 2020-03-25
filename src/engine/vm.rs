@@ -1360,9 +1360,9 @@ impl Engine {
             }
             Statement::Assignment {
                 visibility,
-                mutable,
                 parameter,
                 value,
+                ..
             } => {
                 let val = self.evaluate_maybe_lazy(value, true)?;
                 self.env.insert(parameter, val.clone());
@@ -1385,7 +1385,7 @@ impl Engine {
                         let obj = self.evaluate(obj)?;
                         let key = self.evaluate(field)?;
                         let args = [key, self.evaluate(value)?];
-                        self.call_method(&obj, "index_set", &args);
+                        self.call_method(&obj, "index_set", &args)?;
                         Ok(())
                     }
                     Expression::Identifier(ident) if ident.len() == 1 => {

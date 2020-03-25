@@ -2,6 +2,30 @@ import std::prelude::_;
 import std::math::_;
 import std::iter::_;
 
+fn is_prime(x, primes) = {
+  !primes.iter().any(|prime| x % prime == 0)
+};
+
+fn prime_gen() = {
+  let state = Object {
+    primes: [],
+    current: 1,
+  };
+  FunctionIterator(state, |state| {
+    let primes = state.primes;
+    let current = state.current + 1;
+
+    # Iterate up from the current prime
+    while !is_prime(current, primes) do {
+      current = current + 1;
+    };
+
+    # Add the new prime
+    primes.push(current);
+    current
+  })
+};
+
 fn fib_gen() = {
   let state = Object {
     term1: 1,
@@ -17,9 +41,7 @@ fn fib_gen() = {
 };
 
 pub fn main() = {
-  let sum = fib_gen()
-    .filter(|x| x % 2 == 0)
-    .take_while(|x| x < 4e6)
-    .sum();
-  println(sum);
+  for prime in prime_gen().take(10) do {
+    println(prime);;
+  };
 };

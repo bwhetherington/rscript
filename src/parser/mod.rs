@@ -52,7 +52,7 @@ impl fmt::Display for Span {
         write!(f, "{}, {} (len: {}", self.col, self.row, self.len)?;
         match self.file.as_ref() {
             Some(file) => write!(f, ", file: {})", file),
-            None => write!(f, ")"),
+            None => write!(f, ", <no file>)"),
         }
     }
 }
