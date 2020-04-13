@@ -17,7 +17,7 @@ pub class Rng ext Iterator {
     self.current / M
   };
 
-  fn ints(min, max) = self.map(|r| floor(r * (max - min)) + min);
+  fn ints(min, max) = self.map(fn(r) = floor(r * (max - min)) + min);
 };
 
 pub fn rng() = Rng(time());

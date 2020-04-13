@@ -1,3 +1,4 @@
+mod codegen;
 mod engine;
 mod parser;
 

@@ -680,8 +680,10 @@ impl<I: TokenIter> Parser<I> {
     }
 
     fn parse_lambda(&mut self) -> ParseResult<Expression> {
+        self.parse_token(TokenKind::OpenParen)?;
         let params =
-            self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::Or)?;
+            self.parse_comma_separated(|parser| parser.parse_identifier(), TokenKind::CloseParen)?;
+        self.parse_token(TokenKind::Equal)?;
         let body = self.parse_expr()?;
         Ok(Expression::Lambda(params, Box::new(body)))
     }
@@ -786,12 +788,13 @@ impl<I: TokenIter> Parser<I> {
                     }
                 }
             }
-            TokenKind::Or => self.parse_lambda(),
-            TokenKind::DoubleOr => {
-                let params = Vec::new();
-                let body = self.parse_expr()?;
-                Ok(Expression::Lambda(params, Box::new(body)))
-            }
+            TokenKind::Function => self.parse_lambda(),
+            // TokenKind::Or => self.parse_lambda(),
+            // TokenKind::DoubleOr => {
+            //     let params = Vec::new();
+            //     let body = self.parse_expr()?;
+            //     Ok(Expression::Lambda(params, Box::new(body)))
+            // }
             _ => Err(ParseError::Custom(
                 format!("unexpected token: {:?}", token.kind),
                 Some(token.span.clone()),
@@ -805,7 +808,7 @@ impl<I: TokenIter> Parser<I> {
             kind if kind == &token_kind => Ok(true),
             // TODO give better error
             _ => {
-                println!("{:?}", token);
+                println!("Token error: expected {:?}, found {:?}", token_kind, token);
                 Err(ParseError::Custom(
                     format!("expected token {:?}, found {:?}", token_kind, token.kind),
                     Some(token.span.clone()),
@@ -1043,7 +1046,22 @@ impl<I: TokenIter> Parser<I> {
                 })
             }
             TokenKind::Operator => self.parse_operator(visibility),
-            TokenKind::Function => self.parse_function(visibility),
+            TokenKind::Function => {
+                // Check next token
+                // If the next token is a parenthesis, parse as a lambda expression
+                let next = self.next_token_internal()?;
+                match next.kind {
+                    TokenKind::OpenParen => {
+                        self.unread(next);
+                        let expr = self.parse_lambda()?;
+                        Ok(Statement::Expression(expr))
+                    }
+                    _ => {
+                        self.unread(next);
+                        self.parse_function(visibility)
+                    }
+                }
+            }
             TokenKind::Let => {
                 let is_mut = self.parse_mutable()?;
                 let ident = self.parse_identifier()?;
@@ -1248,13 +1266,8 @@ impl<I: TokenIter> Parser<I> {
         let token = self.next_token_internal()?;
         match token.kind {
             TokenKind::CloseBrace => return Ok(()),
-            TokenKind::Semicolon => {
-                println!("Ignore semicolon: {:?}", token);
-            }
-            _ => {
-                println!("{:?}", token);
-                self.unread(token)
-            }
+            TokenKind::Semicolon => {}
+            _ => self.unread(token),
         }
 
         let statement = self.read_statement_maybe_semicolon()?;
@@ -1498,9 +1511,9 @@ impl fmt::Display for Expression {
     }
 }
 
-impl fmt::Display for Statement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Statement::*;
-        Ok(())
-    }
-}
+// impl fmt::Display for Statement {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         use Statement::*;
+//         Ok(())
+//     }
+// }

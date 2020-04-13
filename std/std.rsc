@@ -22,9 +22,9 @@ pub class Slice ext List {
   fn len() = self.to - self.from;
 };
 
-List.slice = |from, to| Slice(self, from, to);
+List.slice = fn(from, to) = Slice(self, from, to);
 
-List.times = |num| {
+List.times = fn(num) = {
   let list = [];
   for _ in Range(0, num) do {
     for x in self do {
@@ -34,7 +34,7 @@ List.times = |num| {
   list
 };
 
-List.copy = || {
+List.copy = fn() = {
   let new_list = [];
   for item in self.iter() do {
     new_list.push(item);
@@ -42,7 +42,7 @@ List.copy = || {
   new_list
 };
 
-List.contains = |item| {
+List.contains = fn(item) = {
   let is_contained = False;
   for self_item in self.iter() do {
     if item == self_item then {
@@ -53,7 +53,7 @@ List.contains = |item| {
   is_contained
 };
 
-List.shuffle_rng = |gen| {
+List.shuffle_rng = fn(gen) = {
   let len = self.len();
   let gen = gen.ints(0, len);
   let new_list = [];
@@ -70,9 +70,9 @@ List.shuffle_rng = |gen| {
   new_list
 };
 
-List.shuffle = || self.shuffle_rng(rng());
+List.shuffle = fn() = self.shuffle_rng(rng());
 
-List.rev = || {
+List.rev = fn() = {
   let len = self.len();
   let output = [];
   for i in Range(0, len) do {
@@ -80,4 +80,12 @@ List.rev = || {
     output.push(self[index]);
   };
   output
+};
+
+List.with_size = fn(init, len) = {
+  let list = [];
+  for i in Range(0, len) do {
+    list.push(init());
+  };
+  list
 };

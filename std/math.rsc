@@ -1,4 +1,5 @@
 import std::iter::Range;
+import std::hash::HashSet;
 
 pub let PI = __PI__;
 pub let E = __E__;
@@ -62,13 +63,41 @@ pub class Vec2 {
   op to_string() = "(" + self.x + ", " + self.y + ")";
 };
 
-pub class Either {
-  op new(a, b) = {
-    self.a = a;
-    self.b = b;
+pub class Union {
+  op new(items) = {
+    let set = HashSet();
+    for item in items do {
+      set.insert(item);
+    };
+    self.set = set;
   };
 
-  op plus(other) = {
-    
+  fn iter() = self.set.iter();
+
+  fn map_fn(f, operand) = {
+    # Check if addend is itself a union
+    if std::type_of(operand) == "Object" then {
+      if operand.instance_of(Union) then {
+        let new_set = [];
+        for x in self do {
+          for y in operand do {
+            new_set.push(f(x, y));
+          };
+        };
+        Union(new_set)
+      } else {
+        Union(self.iter().map(fn(x) = f(x, operand)))
+      }
+    } else {
+      Union(self.iter().map(fn(x) = f(x, operand)))
+    }
   };
+
+  op plus(addend) = self.map_fn(fn(x, y) = x + y, addend);
+
+  op minus(subtrahend) = self.map_fn(fn(x, y) = x - y, subtrahend);
+
+  op to_string() = " | ".join(self.set.iter().list());
 };
+
+pub fn plus_minus(x, y) = Union([x + y, x - y]);

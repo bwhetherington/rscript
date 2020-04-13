@@ -1,7 +1,7 @@
 import std::iter::Range;
 import std::io::println;
 
-String.equals = |other| {
+String.equals = fn(other) = {
   if self.len() == other.len() then {
     # If strings are of the same length, check all pairs of chars for equality
     let output = True;
@@ -20,19 +20,19 @@ String.equals = |other| {
   }
 };
 
-String.char_codes = || {
+String.char_codes = fn() = {
   # Somewhat awkward how we have to deliberately remember `self`
   let this = self;
 
   Range(0, self.len())
-    .map(|index| this.char_code_at(index)) # Because `self` refers to the iterator here
+    .map(fn(index) = this.char_code_at(index)) # Because `self` refers to the iterator here
 };
 
-String.slice = |from, to| {
+String.slice = fn(from, to) = {
   self.iter().skip(from).take(to - from).sum()
 };
 
-String.split = |delim| {
+String.split = fn(delim) = {
   let strs = [];
   let cur = "";
 
@@ -54,7 +54,18 @@ String.split = |delim| {
   strs
 };
 
-String.from = |items, delim| {
+String.join = fn(items) = {
+  let s = "";
+  if items.len() > 0 then {
+    for i in Range(0, items.len() - 1) do {
+      s = s + items[i] + self;
+    };
+    s = s + items[items.len() - 1];
+  };
+  s
+};
+
+String.from = fn(items, delim) = {
   let s = "";
   if items.len() > 0 then {
     for i in Range(0, items.len() - 1) do {
@@ -64,3 +75,5 @@ String.from = |items, delim| {
   };
   s
 };
+
+String.copy = fn() = self;

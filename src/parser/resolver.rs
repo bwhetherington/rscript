@@ -5,7 +5,7 @@ use crate::parser::{
 use std::{
     fmt, fs,
     io::{prelude::*, Error},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 #[derive(Debug)]

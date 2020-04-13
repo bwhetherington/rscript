@@ -238,42 +238,6 @@ impl Compiler {
             }
             Call(func, args) => {
                 let func = self.compile_expression(func.as_ref())?;
-
-                // // Check if we are compiling a curried function
-                // let mut curried_arg_indices = Vec::new();
-                // for (index, arg) in args.into_iter().enumerate() {
-                //     match arg {
-                //         Expression::Identifier(path) => match &path[..] {
-                //             [param] if param == "_" => {
-                //                 curried_arg_indices.push(index);
-                //             }
-                //             _ => (),
-                //         },
-                //         _ => (),
-                //     }
-                // }
-
-                // if !curried_arg_indices.is_empty() {
-                //     let mut compiled_args: Vec<std::string::String> = Vec::new();
-                //     for index in 0..args.len() {
-                //         if curried_arg_indices.contains(&index) {
-                //             compiled_args.push(format!("__arg_{}", index));
-                //         } else {
-                //             let compiled_arg = self.compile_expression(&args[index])?;
-                //             compiled_args.push(compiled_arg);
-                //         }
-                //     }
-                //     let compiled_args = compiled_args.join(",");
-
-                //     let params: Vec<_> = curried_arg_indices
-                //         .iter()
-                //         .map(|index| format!("__arg_{}", index))
-                //         .collect();
-                //     let params = params.join(",");
-
-                //     let compiled = format!("(({})=>{}({}))", params, func, compiled_args);
-                //     Ok(compiled)
-                // } else {
                 let args: Vec<_> = args
                     .into_iter()
                     .map(|arg| self.compile_expression(arg))

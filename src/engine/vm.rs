@@ -11,6 +11,10 @@ pub fn is_usize(num: f64) -> bool {
     (num as usize as f64) == num
 }
 
+fn is_isize(num: f64) -> bool {
+    (num as isize as f64) == num
+}
+
 #[derive(Debug)]
 struct Capture {
     frames: Vec<HashSet<String>>,
@@ -186,12 +190,12 @@ impl EvalError {
     }
 }
 
-fn matches_prefix<T: PartialEq + fmt::Debug>(
-    prefix: impl Iterator<Item = T>,
-    path: impl Iterator<Item = T>,
-) -> bool {
-    prefix.zip(path).all(|(a, b)| a == b)
-}
+// fn matches_prefix<T: PartialEq + fmt::Debug>(
+//     prefix: impl Iterator<Item = T>,
+//     path: impl Iterator<Item = T>,
+// ) -> bool {
+//     prefix.zip(path).all(|(a, b)| a == b)
+// }
 
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -301,29 +305,14 @@ impl Engine {
         s.push('{');
         let mut is_first = true;
 
-        let proto_str = "proto".to_owned();
-
-        let proto = obj
-            .proto
-            .as_ref()
-            .map(|proto| (&proto_str, Value::Object(proto.clone())));
-
-        for (key, value) in obj
-            .fields
-            .iter()
-            .map(|(key, value)| (key, value.clone()))
-            .chain(proto.into_iter())
-        {
+        for (key, value) in obj.fields.iter().map(|(key, value)| (key, value.clone())) {
             if key != "type_name" {
                 if is_first {
                     is_first = false;
                 } else {
                     s.push_str(", ");
                 }
-                let value = match value {
-                    Value::Object(_) => "<Object>".to_owned(),
-                    other => self.value_to_string(&other)?,
-                };
+                let value = self.value_to_string(&value)?;
                 s.push_str(key);
                 s.push_str(": ");
                 s.push_str(&value);
@@ -336,6 +325,15 @@ impl Engine {
 
     fn init_types(&mut self) -> EvalResult<()> {
         let mut obj_proto = Object::new();
+
+        obj_proto.define_method("new", |engine, this, args| {
+            let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
+            match (this.as_ref(), args.len()) {
+                (Value::Object(_), 0) => Ok(Value::None),
+                (Value::Object(_), len) => Err(EvalError::arity_mismatch(0, len)),
+                (other, _) => Err(EvalError::type_mismatch("Object", other.type_of())),
+            }
+        });
 
         obj_proto.define_method("to_string", |engine, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
@@ -374,7 +372,7 @@ impl Engine {
             }
         });
 
-        obj_proto.define_method("index_get", |_, this, args| {
+        obj_proto.define_method("index_set", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
                 (Value::Object(this), [Value::String(s), item]) => {
@@ -474,13 +472,17 @@ impl Engine {
         list_proto.define_method("index_get", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
-                (Value::Object(this), [Value::Number(n)]) if is_usize(*n) => {
-                    let n = *n as usize;
+                (Value::Object(this), [Value::Number(n)]) if is_isize(*n) => {
+                    let n = *n as isize;
                     match this.borrow().get("data") {
                         Some(Value::List(vec)) => {
                             let list = vec.as_ref().borrow();
-                            if n < list.len() {
-                                Ok(list[n].clone())
+                            if 0 <= n && n < list.len() as isize {
+                                let corrected = n as usize;
+                                Ok(list[corrected].clone())
+                            } else if (-n) <= (list.len() as isize) {
+                                let corrected = (list.len() as isize + n) as usize;
+                                Ok(list[corrected].clone())
                             } else {
                                 Ok(Value::None)
                             }
@@ -501,13 +503,17 @@ impl Engine {
         list_proto.define_method("index_set", |_, this, args| {
             let this = this.ok_or_else(|| EvalError::undefined("self"))?.clone();
             match (this.as_ref(), args) {
-                (Value::Object(this), [Value::Number(n), item]) if is_usize(*n) => {
-                    let n = *n as usize;
+                (Value::Object(this), [Value::Number(n), item]) if is_isize(*n) => {
+                    let n = *n as isize;
                     match this.borrow().get("data") {
                         Some(Value::List(vec)) => {
                             let mut list = vec.as_ref().borrow_mut();
-                            if n < list.len() {
-                                list[n] = item.clone();
+                            if 0 <= n && n < list.len() as isize {
+                                let corrected = n as usize;
+                                list[corrected] = item.clone();
+                            } else if (-n) <= (list.len() as isize) {
+                                let corrected = (list.len() as isize + n) as usize;
+                                list[corrected] = item.clone();
                             }
                             Ok(Value::None)
                         }
@@ -1110,6 +1116,7 @@ impl Engine {
             if statement.is_top_level() {
                 self.execute(statement)?;
             } else {
+                println!("invalid: {:?}", statement);
                 return Err(EvalError::InvalidStatement);
             }
         }
@@ -1684,7 +1691,7 @@ impl Engine {
                         let mut new_obj = Object::new();
                         new_obj.set_proto(obj.clone());
                         let new_obj = Value::Object(ptr(new_obj));
-                        self.call_method(&new_obj, "new", &args);
+                        self.call_method(&new_obj, "new", &args)?;
                         Ok(new_obj)
                     }
 
@@ -1779,7 +1786,7 @@ impl Engine {
             // Check for `data` field
             let data = obj.borrow().get("data");
             if let Some(Value::String(s)) = data {
-                return Ok(s.to_string());
+                return Ok(format!("{}", s));
             }
         }
         match value {
@@ -2096,7 +2103,7 @@ impl fmt::Display for Value {
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Object(obj) => write!(f, "{}", obj.as_ref().borrow()),
             Value::List(list) => {
-                write!(f, "[")?;
+                write!(f, "List[")?;
                 let list = list.as_ref().borrow();
 
                 if list.len() > 0 {

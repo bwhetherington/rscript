@@ -24,7 +24,7 @@ pub class Iterator {
   # and the other specified iterator.
   fn zip(iter) = ZipIterator(self, iter);
 
-  fn zip_with(iter, f) = ZipIterator(self, iter).map(|pair| f(pair[0], pair[1]));
+  fn zip_with(iter, f) = ZipIterator(self, iter).map(fn(pair) = f(pair[0], pair[1]));
 
   # Produces itself.
   fn iter() = self;
@@ -59,7 +59,7 @@ pub class Iterator {
   };
 
   # Consumes this iterator, producing the sum of its elements
-  fn sum() = self.fold(0, |a, b| a + b);
+  fn sum() = self.fold(0, fn(a, b) = a + b);
 
   # Consumes this iterator, performing the specified function on each element.
   fn for_each(func) = {
@@ -68,6 +68,8 @@ pub class Iterator {
     };
   };
 
+  # Consumes this iterator, producing `True` if all values of this iterator
+  # satisfy the given predicate.
   fn all(pred) = {
     let res = True;
     for x in self do {
@@ -79,6 +81,8 @@ pub class Iterator {
     res
   };
 
+  # Consumes this iterator, producing `True` if any value of this iterator
+  # satisfies the given predicate.
   fn any(pred) = {
     let res = False;
     for x in self do {
@@ -89,23 +93,25 @@ pub class Iterator {
     };
     res
   };
+
+  fn looped() = LoopIterator(self);
 };
 
 class PeekableIterator ext Iterator {
   op new(iter) = {
-    self.iter = iter;
-    self.queue = [];
+    self._iter = iter;
+    self._queue = [];
   };
 
   op next() = 
-    if self.queue.len() > 0 
-    then self.queue.pop()
-    else self.iter.next();
+    if self._queue.len() > 0 
+    then self._queue.pop()
+    else self._iter.next();
 
   fn peek() = {
     let value = self.next();
     if value != None then {
-      self.queue.push(value);
+      self._queue.push(value);
     };
     value
   };
@@ -113,38 +119,59 @@ class PeekableIterator ext Iterator {
 
 class IndexIterator ext Iterator {
   op new(list) = {
-    self.list = list;
-    self.end = list.len();
-    self.index = 0;
+    self._list = list;
+    self._end = list.len();
+    self._index = 0;
   };
 
   op next() = {
-    if self.index < self.end then {
-      let value = self.list[self.index];
-      self.index = self.index + 1;
+    if self._index < self._end then {
+      let value = self._list[self._index];
+      self._index = self._index + 1;
       value
     } 
   };
+
+  fn looped() = LoopIndexIterator(self._list, self._index);
 };
 
-List.iter = || {
-  IndexIterator(self)
+fn wrapping_add(x, addend, modulo) = {
+  (x + addend) % modulo
 };
 
-String.iter = || {
-  IndexIterator(self)
-};
-
-class FilterIterator ext Iterator {
-  op new(iter, pred) = {
-    self.iter = iter;
-    self.pred = pred;
+class LoopIndexIterator ext Iterator {
+  op new(list, index) = {
+    self._list = list;
+    self._index = index;
   };
 
   op next() = {
-    let value = self.iter.next();
+    let value = self._list[self._index];
+    self._index = wrapping_add(self._index, 1, self._list.len());
+    value
+  };
+};
+
+List.iter = fn() =
+  IndexIterator(self);
+
+List.map = fn(f) = self.iter().map(f).list();
+
+List.filter = fn(f) = self.iter().filter(f).list();
+
+String.iter = fn() =
+  IndexIterator(self);
+
+class FilterIterator ext Iterator {
+  op new(iter, pred) = {
+    self._iter = iter;
+    self._pred = pred;
+  };
+
+  op next() = {
+    let value = self._iter.next();
     if value then {
-      if self.pred(value) then {
+      if self._pred(value) then {
         value
       } else {
         self.next()
@@ -154,41 +181,41 @@ class FilterIterator ext Iterator {
 };
 
 class MapIterator ext Iterator {
-  op new(iter, map) = {
-    self.iter = iter;
-    self.map = map;
+  op new(iter, func) = {
+    self._iter = iter;
+    self._func = func;
   };
 
   op next() = {
-    let value = self.iter.next();
-    if value then self.map(value)
+    let value = self._iter.next();
+    if value then self._func(value)
   };
 };
 
 class TakeIterator ext Iterator {
   op new(iter, num) = {
-    self.iter = iter;
-    self.max = num;
-    self.cur = 0;
+    self._iter = iter;
+    self._max = num;
+    self._cur = 0;
   };
 
   op next() = {
-    if self.cur < self.max then {
-      self.cur = self.cur + 1;
-      self.iter.next()
+    if self._cur < self._max then {
+      self._cur = self._cur + 1;
+      self._iter.next()
     }
   };
 };
 
 class TakeWhileIterator ext Iterator {
   op new(iter, pred) = {
-    self.iter = iter;
-    self.pred = pred;
+    self._iter = iter;
+    self._pred = pred;
   };
 
   op next() = {
-    let cur = self.iter.next();
-    if self.pred(cur) then {
+    let cur = self._iter.next();
+    if self._pred(cur) then {
       cur
     } else {
       None
@@ -198,14 +225,14 @@ class TakeWhileIterator ext Iterator {
 
 pub class Range ext Iterator {
   op new(from, to) = {
-    self.from = from;
-    self.to = to;
+    self._from = from;
+    self._to = to;
   };
 
   op next() = {
-    if self.from < self.to then {
-      let val = self.from;
-      self.from = self.from + 1;
+    if self._from < self._to then {
+      let val = self._from;
+      self._from = self._from + 1;
       val
     }
   };
@@ -213,35 +240,62 @@ pub class Range ext Iterator {
 
 class SkipIterator ext Iterator {
   op new(iter, num) = {
-    self.iter = iter;
+    self._iter = iter;
     for i in Range(0, num) do {
-      self.iter.next();
+      self._iter.next();
     };
   };
 
-  op next() = self.iter.next();
+  op next() = self._iter.next();
 };
 
 class ZipIterator ext Iterator {
   op new(a, b) = {
-    self.a = a;
-    self.b = b;
+    self._a = a;
+    self._b = b;
   };
 
   op next() = {
-    let a = self.a.next();
-    let b = self.b.next();
+    let a = self._a.next();
+    let b = self._b.next();
     if a != None && b != None then {
       [a, b]
     }
   };
 };
 
-pub class FunctionIterator ext Iterator {
-  op new(state, func) = {
-    self.func = func;
-    self.state = state;
+class LoopIterator ext Iterator {
+  op new(iter) = {
+    self._iter = iter;
+    self._stored = [];
+    self._index = -1;
   };
 
-  op next() = self.func(self.state);
+  fn is_first_iter() = self._index == -1;
+
+  op next() = {
+    if self.is_first_iter() then {
+      let val = self._iter.next();
+      if val == None then {
+        self._index = 0;
+        self.next()
+      } else {
+        self._stored.push(val);
+        val
+      }
+    } else {
+      let val = self._stored[self._index];
+      self._index = wrapping_add(self._index, 1, self._stored.len());
+      val
+    }
+  };
+};
+
+pub class FunctionIterator ext Iterator {
+  op new(state, func) = {
+    self._func = func;
+    self._state = state;
+  };
+
+  op next() = self._func(self._state);
 };

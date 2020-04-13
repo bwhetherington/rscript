@@ -1,6 +1,6 @@
 import std::prelude::_;
 
-let INITIAL_CAPACITY = 10;
+let INITIAL_CAPACITY = 2;
 let RATIO = 2 / 3;
 
 pub let hash = __hash__;
@@ -16,20 +16,17 @@ pub class Entry {
 
 pub class HashMap {
   op new() = {
-    self.buckets = [];
-    self.size_internal = 0;
-    for x in Range(0, INITIAL_CAPACITY) do {
-      self.buckets.push([]);
-    };
+    self._buckets = List.with_size(fn() = [], INITIAL_CAPACITY);
+    self._size_internal = 0;
   };
 
-  fn size() = self.size_internal;
+  fn size() = self._size_internal;
 
-  fn capacity() = self.buckets.len();
+  fn capacity() = self._buckets.len();
 
   fn get_bucket_index(key) = hash(key) % self.capacity();
 
-  fn get_bucket(key) = self.buckets[self.get_bucket_index(key)];
+  fn get_bucket(key) = self._buckets[self.get_bucket_index(key)];
 
   fn get_entry(key) = {
     let bucket = self.get_bucket(key);
@@ -57,31 +54,41 @@ pub class HashMap {
     if found == None then {
       let entry = Entry(key, None);
       bucket.push(entry);
-      self.size_internal = self.size_internal + 1;
+      self._size_internal = self._size_internal + 1;
       found = entry;
     };
 
     found
   };
 
-  fn entries() = {
+  fn entry_list() = {
     let entries = [];
-    for bucket in self.buckets.iter() do {
+    for bucket in self._buckets.iter() do {
       for entry in bucket.iter() do {
         if entry.value != None then {
           entries.push(entry);
         };
       };
     };
-    entries.iter()
+    entries
   };
 
-  fn keys() = self.entries().map(|entry| entry.key);
+  fn entries() = {
+    self.entry_list().iter()
+  };
 
-  fn values() = self.entries().map(|entry| entry.value);
+  fn keys() = self.entries().map(fn(entry) = entry.key);
+
+  fn values() = self.entries().map(fn(entry) = entry.value);
 
   fn resize() = {
-
+    # Store existing entries
+    let existing = self.entry_list();
+    let capacity = self.capacity() * 1.5;
+    self._buckets = List.with_size(fn() = [], capacity);
+    for entry in existing do {
+      self.insert(entry.key, entry.value);
+    };
   };
 
   fn insert(key, value) = {
@@ -95,7 +102,7 @@ pub class HashMap {
   fn get(key) = {
     Option
       .from(self.get_entry(key))
-      .map(|entry| entry.value)
+      .map(fn(entry) = entry.value)
       .unwrap()
   };
 
@@ -105,7 +112,7 @@ pub class HashMap {
       if entry.value != None then {
         # This is the only case where we actually remove a value
         entry.value = None;
-        self.size_internal = self.size_internal - 1;
+        self._size_internal = self._size_internal - 1;
         True
       } else {
         False
@@ -130,33 +137,33 @@ pub class HashMap {
 
   op to_string() = {
     let s = "{";
-    let inner = String.from(self.entries().map(|entry| entry.key + ": " + entry.value).list(), ", ");
+    let inner = ", ".join(self.entries().map(fn(entry) = entry.key + ": " + entry.value).list());
     s + inner + "}"
   };
 };
 
 pub class HashSet {
   op new() = {
-    self.map = HashMap();
+    self._map = HashMap();
   };
 
   fn insert(el) = {
-    self.map[el] = True;
+    self._map[el] = True;
   };
 
   fn remove(el) = {
-    self.map.remove(el);
+    self._map.remove(el);
   };
 
-  fn contains(el) = self.map.contains_key(el);
+  fn contains(el) = self._map.contains_key(el);
 
-  fn iter() = self.map
+  fn iter() = self._map
     .entries()
-    .map(|entry| entry.key);
+    .map(fn(entry) = entry.key);
 
   op to_string() = {
     let s = "{";
-    let inner = String.from(self.iter().list(), ", ");
+    let inner = ", ".join(self.iter().list());
     s + inner + "}"
   };
 };
