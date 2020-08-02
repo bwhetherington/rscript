@@ -117,7 +117,7 @@ class PeekableIterator ext Iterator {
   };
 };
 
-class IndexIterator ext Iterator {
+pub class IndexIterator ext Iterator {
   op new(list) = {
     self._list = list;
     self._end = list.len();
@@ -135,9 +135,7 @@ class IndexIterator ext Iterator {
   fn looped() = LoopIndexIterator(self._list, self._index);
 };
 
-fn wrapping_add(x, addend, modulo) = {
-  (x + addend) % modulo
-};
+fn wrapping_add(x, addend, modulo) = (x + addend) % modulo;
 
 class LoopIndexIterator ext Iterator {
   op new(list, index) = {

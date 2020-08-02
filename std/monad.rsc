@@ -12,6 +12,8 @@ pub class Ok ext Result {
   op to_string() = "Ok(" + self.value + ")";
 
   fn unwrap() = self.value;
+
+  fn or(f) = self.value;
 };
 
 pub class Err ext Result {
@@ -24,6 +26,8 @@ pub class Err ext Result {
   fn flat_map(_) = self;
 
   op to_string() = "Err(" + self.err + ")";
+
+  fn or(f) = f(self.err);
 };
 
 pub class Option {
@@ -45,6 +49,8 @@ pub class Some ext Option {
   op to_string() = "Some(" + self.value + ")";
 
   fn unwrap() = self.value;
+
+  fn or(f) = self.value;
 };
 
 pub class Nothing ext Option {
@@ -52,4 +58,5 @@ pub class Nothing ext Option {
   fn flat_map(_) = self;
   op to_string() = "Nothing";
   fn unwrap() = None;
+  fn or(f) = f();
 };

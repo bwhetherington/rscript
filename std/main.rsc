@@ -1,46 +1,28 @@
 import std::prelude::_;
-import std::math::_;
-import std::iter::_;
-import std::hash::_;
+import std::rand::_;
 
-fn is_prime(x, primes) = !primes.iter().any(fn(prime) = x % prime == 0);
-
-fn prime_gen() = {
-  let state = Object {
-    primes: [],
-    current: 1,
+pub class Box {
+  op new(val) = {
+    self._val = val;
   };
-  FunctionIterator(state, fn(state) = {
-    let primes = state.primes;
-    let current = state.current + 1;
 
-    # Iterate up from the current prime
-    while !is_prime(current, primes) do {
-      current = current + 1;
-    };
+  fn get() = self._val;
 
-    # Add the new prime
-    primes.push(current);
-    current
-  })
+  fn set(val) = {
+    let old = self._val;
+    self._val = val;
+    old
+  };
+
+  op to_string() = "Box(" + self.get() + ")";
 };
 
-fn fib_gen() = {
-  let state = Object {
-    term1: 1,
-    term2: 1,
-  };
-  FunctionIterator(state, fn(state) = {
-    let prev = state.term1;
-    let next = state.term1 + state.term2;
-    state.term1 = state.term2;
-    state.term2 = next;
-    prev
-  })
-};
+let test = Box(10);
 
-fn compose(f, g) = fn(x) = f(g(x));
+fn foo() = {
+  println(test.get());
+  test.set(test.get() + 1);
+};
 
 pub fn main() = {
-  println(plus_minus(plus_minus(3, 4), 4));
 };

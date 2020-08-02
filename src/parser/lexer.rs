@@ -64,6 +64,7 @@ pub enum TokenKind {
     Float(f64),
     String(String),
     Boolean(bool),
+    Character(char),
     Public,
     Import,
     As,
@@ -75,6 +76,86 @@ pub enum TokenKind {
     For,
     In,
     Ext,
+    QuestionDot,
+    DoubleQuestion,
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TokenKind::*;
+        match self {
+            Assign => write!(f, ":="),
+            Do => write!(f, "do"),
+            Dot => write!(f, "."),
+            DotDot => write!(f, ".."),
+            Function => write!(f, "fn"),
+            Operator => write!(f, "op"),
+            Type => write!(f, "type"),
+            Let => write!(f, "let"),
+            Mut => write!(f, "mut"),
+            If => write!(f, "if"),
+            Then => write!(f, "then"),
+            Else => write!(f, "else"),
+            Plus => write!(f, "+"),
+            PlusAssign => write!(f, "+="),
+            Minus => write!(f, "-"),
+            MinusAssign => write!(f, "-="),
+            Times => write!(f, "*"),
+            TimesAssign => write!(f, "*="),
+            Divide => write!(f, "/"),
+            DivideAssign => write!(f, "/="),
+            Mod => write!(f, "%"),
+            ModAssign => write!(f, "%="),
+            Equal => write!(f, "="),
+            DoubleEqual => write!(f, "=="),
+            NotEqual => write!(f, "!="),
+            Not => write!(f, "!"),
+            BWNot => write!(f, "~"),
+            LT => write!(f, "<"),
+            LTE => write!(f, "<="),
+            GT => write!(f, ">"),
+            GTE => write!(f, ">="),
+            OpenParen => write!(f, "("),
+            CloseParen => write!(f, ")"),
+            OpenBracket => write!(f, "["),
+            CloseBracket => write!(f, "]"),
+            OpenBrace => write!(f, "{{"),
+            CloseBrace => write!(f, "}}"),
+            Semicolon => write!(f, ";"),
+            Comma => write!(f, ","),
+            Colon => write!(f, ":"),
+            DoubleColon => write!(f, "::"),
+            Arrow => write!(f, "=>"),
+            And => write!(f, "&"),
+            Or => write!(f, "|"),
+            Xor => write!(f, "^"),
+            RShift => write!(f, ">>"),
+            LShift => write!(f, "<<"),
+            DoubleAnd => write!(f, "&&"),
+            DoubleOr => write!(f, "||"),
+            Identifier(s) => write!(f, "{}", s),
+            Int(i) => write!(f, "{}", i),
+            Float(n) => write!(f, "{}", n),
+            String(s) => write!(f, "\"{}\"", s),
+            Character(ch) => write!(f, "'{}'", ch),
+            Boolean(b) if *b => write!(f, "True"),
+            Boolean(_) => write!(f, "False"),
+            Public => write!(f, "pub"),
+            Import => write!(f, "import"),
+            As => write!(f, "as"),
+            Class => write!(f, "class"),
+            While => write!(f, "while"),
+            Loop => write!(f, "loop"),
+            Break => write!(f, "break"),
+            None => write!(f, "None"),
+            For => write!(f, "for"),
+            In => write!(f, "in"),
+            Ext => write!(f, "ext"),
+            QuestionDot => write!(f, "?."),
+            DoubleQuestion => write!(f, "??"),
+            DoubleAsterisk => write!(f, "**"),
+        }
+    }
 }
 
 const TOKENS: [(&'static str, TokenKind); 23] = [
@@ -106,7 +187,7 @@ const TOKENS: [(&'static str, TokenKind); 23] = [
 fn is_delimiter(ch: char) -> bool {
     match ch {
         '(' | ')' | '[' | ']' | '{' | '}' | '=' | '!' | '<' | '>' | ',' | ':' | ';' | '"'
-        | '\'' | '+' | '-' | '*' | '/' | '%' | '|' | '.' => true,
+        | '\'' | '+' | '-' | '*' | '/' | '%' | '|' | '.' | '?' => true,
         ch if ch.is_whitespace() => true,
         _ => false,
     }
@@ -143,6 +224,7 @@ pub type LexResult<T> = Result<T, LexError>;
 
 #[derive(Debug)]
 pub enum LexError {
+    UnclosedChar(Span),
     UnclosedString(Span),
     InvalidIdentifier(String, Span),
 }
@@ -160,6 +242,7 @@ impl fmt::Display for LexError {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "LexError: ")?;
         match self {
+            LexError::UnclosedChar(span) => write!(formatter, "unclosed char at {}", span),
             LexError::UnclosedString(span) => write!(formatter, "unclosed string at {}", span),
             LexError::InvalidIdentifier(ident, span) => {
                 write!(formatter, "invalid identifier \"{}\" at {}", ident, span)
@@ -172,15 +255,22 @@ pub struct Lexer<'a> {
     iter: Box<dyn Iterator<Item = char> + 'a>,
     read: Vec<char>,
     loc: (usize, usize),
+    file: Option<String>,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str) -> Lexer<'a> {
+    pub fn new(name: Option<impl Into<String>>, source: &'a str) -> Lexer<'a> {
         Lexer {
             iter: Box::new(source.chars().peekable()),
             read: Vec::new(),
             loc: (1, 1),
+            file: name.map(|file| file.into()),
         }
+    }
+
+    fn get_span(&self, len: usize) -> Span {
+        let (row, col) = self.loc;
+        Span::new(row, col, len, self.file.as_ref())
     }
 
     fn next_char(&mut self) -> Option<char> {
@@ -229,7 +319,7 @@ impl<'a> Lexer<'a> {
                 }
                 '"' => {
                     let len = buf.len() + 2;
-                    return Ok((buf, Span::new(loc.0, loc.1, len)));
+                    return Ok((buf, self.get_span(len)));
                 }
                 other => {
                     buf.push(other);
@@ -240,6 +330,7 @@ impl<'a> Lexer<'a> {
             loc.0,
             loc.1,
             buf.len() + 2,
+            self.file.as_ref(),
         )))
     }
 
@@ -256,14 +347,14 @@ impl<'a> Lexer<'a> {
                 ch if ch.is_whitespace() || is_delimiter(ch) => {
                     self.unread(ch);
                     let len = buf.len();
-                    return (buf, Span::new(loc.0, loc.1, len));
+                    return (buf, self.get_span(len));
                 }
                 ch => buf.push(ch),
             }
             prev = Some(ch);
         }
         let len = buf.len();
-        (buf, Span::new(loc.0, loc.1, len))
+        (buf, self.get_span(len))
     }
 
     fn parse_double(&mut self, default: TokenKind, seq: &[(char, TokenKind)]) -> LexResult<Token> {
@@ -287,7 +378,7 @@ impl<'a> Lexer<'a> {
         let row = row as isize + row_offset;
         Token {
             kind,
-            span: Span::new(col as usize, row as usize, len),
+            span: Span::new(col as usize, row as usize, len, self.file.as_ref()),
         }
     }
 
@@ -295,9 +386,43 @@ impl<'a> Lexer<'a> {
         Ok(self.token(token, -1, 0, 1))
     }
 
+    fn parse_question_mark(&mut self) -> LexResult<Token> {
+        let next = self.next_char();
+        match next {
+            Some('.') => Ok(Token {
+                kind: TokenKind::QuestionDot,
+                span: self.get_span(2),
+            }),
+            Some('?') => Ok(Token {
+                kind: TokenKind::DoubleQuestion,
+                span: self.get_span(2),
+            }),
+            Some(next) => Err(LexError::InvalidIdentifier(
+                format!("?{}", next),
+                self.get_span(2),
+            )),
+            Option::None => Err(LexError::InvalidIdentifier("?".into(), self.get_span(1))),
+        }
+    }
+
+    fn parse_char(&mut self) -> LexResult<Token> {
+        let ch = self.next_char();
+        let (row, col) = self.loc;
+        if let Some(ch) = ch {
+            if let Some('\'') = self.next_char() {
+                return Ok(Token {
+                    kind: TokenKind::Character(ch),
+                    span: Span::new(col, row + 3, 3, self.file.as_ref().cloned()),
+                });
+            }
+        }
+        Err(LexError::UnclosedChar(self.get_span(1)))
+    }
+
     fn next_token_from_char(&mut self, ch: char) -> LexResult<Token> {
         use TokenKind::*;
         match ch {
+            '?' => self.parse_question_mark(),
             '(' => self.char_token(OpenParen),
             ')' => self.char_token(CloseParen),
             '[' => self.char_token(OpenBracket),
@@ -325,6 +450,7 @@ impl<'a> Lexer<'a> {
                 kind: String(s),
                 span,
             }),
+            '\'' => self.parse_char(),
             other => {
                 self.unread(other);
                 let (atom, span) = self.parse_atom();

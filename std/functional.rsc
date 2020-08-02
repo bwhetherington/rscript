@@ -11,3 +11,5 @@ pub fn memoize(f) = {
     }
   }
 };
+
+pub fn compose(f, g) = fn(x) = f(g(x));

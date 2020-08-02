@@ -60,8 +60,11 @@ impl From<Error> for ModuleError {
 
 const EXTENSION: &'static str = "rsc";
 
-fn parse_source(source: impl AsRef<str>) -> ModuleResult<Vec<Statement>> {
-    let lexer = Lexer::new(source.as_ref());
+fn parse_source(
+    name: Option<impl Into<String>>,
+    source: impl AsRef<str>,
+) -> ModuleResult<Vec<Statement>> {
+    let lexer = Lexer::new(name, source.as_ref());
     let mut parser = Parser::new(lexer);
     let body = parser.parse_statements()?;
     Ok(body)
@@ -74,7 +77,8 @@ fn parse_body(path: impl AsRef<Path>) -> ModuleResult<Vec<Statement>> {
     file.read_to_string(&mut buf)?;
 
     // Parse file
-    parse_source(&buf)
+    let file_name = path.file_name().and_then(|name| name.to_str());
+    parse_source(file_name, &buf)
 }
 
 pub struct ModuleInfo {
@@ -106,7 +110,7 @@ pub fn parse_from_meta(meta: &ModuleInfo) -> ModuleResult<Module> {
         // Find its source in the `mod` child
         for child in &meta.children {
             if &child.name == "mod" {
-                let body = parse_source(&child.body)?;
+                let body = parse_source(Some(&child.name), &child.body)?;
                 base_module.body = body;
             } else {
                 let child_module = parse_from_meta(child)?;
@@ -114,7 +118,7 @@ pub fn parse_from_meta(meta: &ModuleInfo) -> ModuleResult<Module> {
             }
         }
     } else {
-        let body = parse_source(&meta.body)?;
+        let body = parse_source(Some(&meta.name), &meta.body)?;
         base_module.body = body;
     }
 

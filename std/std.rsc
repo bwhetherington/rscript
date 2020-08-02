@@ -9,10 +9,14 @@ pub class Slice ext List {
     self.to = to;
   };
 
-  op index_get(i) = self.list[self.from + i];
+  fn _index(i) = {
+    if i < 0 then self.len() + i else i
+  };
+
+  op index_get(i) = self.list[self.from + self._index(i)];
 
   op index_set(i, value) = {
-    self.list[self.from + i] = value;
+    self.list[self.from + self._index(i)] = value;
   };
 
   op to_string() = self.iter().list().to_string();
@@ -41,6 +45,14 @@ List.copy = fn() = {
   };
   new_list
 };
+
+List.push = fn(x) = std::core::list_push(self.data, x);
+
+List.index_get = fn(i) = std::core::list_get(self.data, i);
+
+List.index_set = fn(i, val) = std::core::list_set(self.data, i, val);
+
+List.len = fn() = std::core::list_len(self.data);
 
 List.contains = fn(item) = {
   let is_contained = False;

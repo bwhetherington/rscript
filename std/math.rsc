@@ -14,6 +14,8 @@ pub let acos = __acos__;
 pub let atan = __atan__;
 pub let atan2 = __atan2__;
 
+fn is_object(obj, T) = std::type_of(obj) && obj.instance_of(T);
+
 # Produces the nth fibonacci number.
 pub fn fibonacci(x) = {
   let fibs = [0, 1];
@@ -22,6 +24,12 @@ pub fn fibonacci(x) = {
     fibs.push(val);
   };
   fibs[x]
+};
+
+pub fn fib_rec(x) = {
+  if x < 2
+  then x
+  else fib_rec(x - 1) + fib_rec(x - 2)
 };
 
 pub fn sqrt(num) = num ** 0.5;
@@ -35,7 +43,7 @@ pub class Vec2 {
 
   # Initializes a `Vec2` with the specified x and y-coordinates in Cartesian
   # space.
-  fn cartesian(x, y) = Vec2(x, y);
+  fn cartesian(x, y) = self(x, y);
 
   # Initializes a `Vec2` with the specified angle and radius in polar 
   # coordinates.
@@ -65,14 +73,18 @@ pub class Vec2 {
 
 pub class Union {
   op new(items) = {
-    let set = HashSet();
-    for item in items do {
-      set.insert(item);
+    if is_object(items, HashSet) then {
+      self._set = items;
+    } else {
+      let set = HashSet();
+      for item in items do {
+        set.insert(item);
+      };
+      self._set = set;
     };
-    self.set = set;
   };
 
-  fn iter() = self.set.iter();
+  fn iter() = self._set.iter();
 
   fn map_fn(f, operand) = {
     # Check if addend is itself a union

@@ -1,8 +1,10 @@
 mod ast;
+mod desugar;
 mod lexer;
 mod resolver;
 
 pub use ast::*;
+pub use desugar::*;
 pub use lexer::*;
 pub use resolver::*;
 
@@ -17,12 +19,12 @@ pub struct Span {
 }
 
 impl Span {
-    pub fn new(col: usize, row: usize, len: usize) -> Span {
+    pub fn new(col: usize, row: usize, len: usize, file: Option<impl Into<String>>) -> Span {
         Span {
             col,
             row,
             len,
-            file: None,
+            file: file.map(|file| file.into()),
         }
     }
 

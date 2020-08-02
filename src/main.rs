@@ -113,7 +113,7 @@ impl Console {
 
 fn handle_input(engine: &mut Engine, input: &str) -> Result<Value, Box<dyn Error>> {
     let input = format!("{};", input);
-    let lexer = Lexer::new(&input);
+    let lexer = Lexer::new(Some("<None>"), &input);
     let mut parser = Parser::new(lexer);
 
     let statement = parser.parse_statement()?;
@@ -164,7 +164,7 @@ fn parse_args<'a>(args: &'a [String]) -> ProgramArgs<'a> {
     } else {
         // Otherwise we are done
         // No file means we will make it interactive by default
-        interactive = true;
+        // interactive = true;
     }
 
     // Pass remaining args
@@ -192,21 +192,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     engine.init()?;
 
     load_std(&mut engine).map_err(|err| {
-        eprintln!("{}", err);
-        eprintln!("Error in module: {}", engine.cur_module());
+        eprintln!("error: {}", err);
+        // eprintln!("Error in module: {}", engine.cur_module());
         std::process::exit(-1);
     });
+
+    // Find the main method
+    engine.run_main("std")?;
 
     // Load specified module
     if let Some(module) = file {
         let module = parse_module(module)?;
         engine.preload_module(&module);
-        engine.load_module(&module, true);
-        engine.run_main()?;
+        engine.load_module(&module, false);
+        engine.run_main(&module.identifier)?;
     }
-
-    // Find the main method
-    engine.run_main()?;
 
     if interactive {
         handle_input(&mut engine, "import std::prelude::_").expect("failed to import prelude");

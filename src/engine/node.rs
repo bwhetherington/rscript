@@ -74,14 +74,14 @@ impl Node {
 
     /// Traces through the module to find the node with the specified relative
     /// path.
-    pub fn find(&self, path: &[String]) -> Option<Node> {
+    pub fn find(&self, path: &[impl AsRef<str>]) -> Option<Node> {
         if let Some((first, rest)) = path.split_first() {
             match self {
                 Node::Module(_, children) => {
                     // Foo
                     let children = children.borrow();
                     children
-                        .get(first.as_str())
+                        .get(first.as_ref())
                         .and_then(|child| child.find(rest))
                 }
                 Node::Item(_) => None,
@@ -92,15 +92,18 @@ impl Node {
         }
     }
 
-    pub fn find_items(&self, prefix: &[String]) -> Vec<Vec<String>> {
+    pub fn find_items<T>(&self, prefix: &[T]) -> Vec<Vec<String>>
+    where
+        T: AsRef<str> + Clone,
+    {
         let mut paths = Vec::new();
 
         let module = self.find(prefix);
         if let Some(Node::Module(_, children)) = module {
             for (_, child) in children.borrow().iter() {
                 if let Node::Item(name) = child {
-                    let mut path = prefix.to_vec();
-                    path.push(name.as_ref().to_owned());
+                    let mut path: Vec<_> = prefix.iter().map(|x| x.as_ref().to_string()).collect();
+                    path.push(name.to_string());
                     paths.push(path);
                 }
             }
@@ -111,6 +114,13 @@ impl Node {
 
     pub fn contains(&self, path: &[String]) -> bool {
         self.find(path).is_some()
+    }
+
+    pub fn is_item(&self, path: &[String]) -> bool {
+        match self.find(path) {
+            Some(Node::Item(_)) => true,
+            _ => false,
+        }
     }
 
     pub fn insert_child(&mut self, child: Node) -> bool {

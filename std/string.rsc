@@ -1,4 +1,5 @@
 import std::iter::Range;
+import std::iter::IndexIterator;
 import std::io::println;
 
 String.equals = fn(other) = {
@@ -77,3 +78,28 @@ String.from = fn(items, delim) = {
 };
 
 String.copy = fn() = self;
+
+String.char_codes = fn() = {
+  let str = self;
+  Range(0, self.len()).map(fn(i) = str.char_code_at(i))
+};
+
+String.char_view = fn() = CharView(self);
+
+class CharView {
+  op new(str) = {
+    self._str = str;
+  };
+
+  fn len() = self._str.len();
+
+  op index_get(i) = {
+    if i < 0 then {
+      self._str.char_code_at(self.len() + i)
+    } else {
+      self._str.char_code_at(i)
+    }
+  };
+
+  fn iter() = IndexIterator(self);
+};

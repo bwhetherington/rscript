@@ -33,12 +33,14 @@ pub enum BinaryOp {
     GT,
     GTE,
     Xor,
+    Otherwise,
 }
 
 impl BinaryOp {
     pub fn precedence(&self) -> usize {
         use BinaryOp::*;
         match self {
+            Otherwise => 11,
             Exponentiate => 10,
             Times | Divide | Mod => 9,
             Plus | Minus => 8,
@@ -86,6 +88,8 @@ pub enum Expression {
     Lambda(Vec<String>, Box<Expression>),
     Xml(XmlNode),
     Member(Box<Expression>, String),
+    TryMember(Box<Expression>, String),
+    Character(char),
     None,
 }
 
@@ -458,6 +462,7 @@ impl<I: TokenIter> Parser<I> {
             TokenKind::DoubleOr => Some(BinaryOp::DoubleOr),
             TokenKind::DoubleEqual => Some(BinaryOp::Equal),
             TokenKind::NotEqual => Some(BinaryOp::NotEqual),
+            TokenKind::DoubleQuestion => Some(BinaryOp::Otherwise),
             _ => {
                 // Token isn't an operator
                 self.unread(token);
@@ -573,6 +578,11 @@ impl<I: TokenIter> Parser<I> {
         let tok = self.next_token()?;
         if let Some(tok) = tok {
             match tok.kind {
+                TokenKind::QuestionDot => {
+                    let member = self.parse_identifier()?;
+                    let next_base = Expression::TryMember(Box::new(base_expr), member);
+                    self.parse_expr_internal(next_base)
+                }
                 TokenKind::Dot => {
                     let member = self.parse_identifier()?;
                     let next_base = Expression::Member(Box::new(base_expr), member);
@@ -691,6 +701,7 @@ impl<I: TokenIter> Parser<I> {
     fn parse_primary_expr(&mut self) -> ParseResult<Expression> {
         let token = self.next_token_internal()?;
         match token.kind {
+            TokenKind::Character(ch) => Ok(Expression::Character(ch)),
             TokenKind::None => Ok(Expression::None),
             TokenKind::Int(i) => Ok(Expression::Int(i)),
             TokenKind::Float(f) => Ok(Expression::Float(f)),
@@ -796,7 +807,7 @@ impl<I: TokenIter> Parser<I> {
             //     Ok(Expression::Lambda(params, Box::new(body)))
             // }
             _ => Err(ParseError::Custom(
-                format!("unexpected token: {:?}", token.kind),
+                format!("unexpected token: `{}`", token.kind),
                 Some(token.span.clone()),
             )),
         }
@@ -807,13 +818,10 @@ impl<I: TokenIter> Parser<I> {
         match &token.kind {
             kind if kind == &token_kind => Ok(true),
             // TODO give better error
-            _ => {
-                println!("Token error: expected {:?}, found {:?}", token_kind, token);
-                Err(ParseError::Custom(
-                    format!("expected token {:?}, found {:?}", token_kind, token.kind),
-                    Some(token.span.clone()),
-                ))
-            }
+            _ => Err(ParseError::Custom(
+                format!("expected token `{}`, found `{}`", token_kind, token.kind),
+                Some(token.span.clone()),
+            )),
         }
     }
 
@@ -824,7 +832,7 @@ impl<I: TokenIter> Parser<I> {
             _ => {
                 println!("warning: {:?}", token);
                 Err(ParseError::Custom(
-                    format!("unexpected token: {:?}", token.kind),
+                    format!("unexpected token: `{}`", token.kind),
                     Some(token.span.clone()),
                 ))
             }
@@ -989,7 +997,7 @@ impl<I: TokenIter> Parser<I> {
         let token = self.next_token_internal()?;
         match token.kind {
             TokenKind::Mod => {
-                let identifier = self.parse_identifier()?;
+                // let identifier = self.parse_identifier()?;
                 todo!()
             }
             TokenKind::Class => {
@@ -1075,6 +1083,12 @@ impl<I: TokenIter> Parser<I> {
                 })
             }
             TokenKind::Import => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static(
+                        "import statement may not be public",
+                        None,
+                    ));
+                }
                 let path = self.parse_full_identifier()?;
                 let default_alias = path.last().unwrap();
 
@@ -1092,9 +1106,20 @@ impl<I: TokenIter> Parser<I> {
                 Ok(Statement::Import { path, alias })
             }
             // Parse break;
-            TokenKind::Break => Ok(Statement::Break),
+            TokenKind::Break => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static(
+                        "break statement may not be public",
+                        None,
+                    ));
+                }
+                Ok(Statement::Break)
+            }
 
             TokenKind::Loop => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static("loop statement may not be public", None));
+                }
                 self.parse_token(TokenKind::OpenBrace)?;
 
                 let mut statements = Vec::new();
@@ -1128,6 +1153,9 @@ impl<I: TokenIter> Parser<I> {
             }
 
             TokenKind::For => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static("for statement may not be public", None));
+                }
                 let item = self.parse_identifier()?;
                 self.parse_token(TokenKind::In)?;
                 let iterator = self.parse_expr()?;
@@ -1169,6 +1197,12 @@ impl<I: TokenIter> Parser<I> {
             }
 
             TokenKind::While => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static(
+                        "while statement may not be public",
+                        None,
+                    ));
+                }
                 let condition = self.parse_expr()?;
                 self.parse_token(TokenKind::Do)?;
                 self.parse_token(TokenKind::OpenBrace)?;
@@ -1208,11 +1242,36 @@ impl<I: TokenIter> Parser<I> {
 
             // Parse expression or assignment
             _ => {
+                if visibility.is_visible() {
+                    return Err(ParseError::Static(
+                        "expression or assignment statement may not be public",
+                        None,
+                    ));
+                }
                 self.unread(token);
                 let expr = self.parse_expr()?;
 
                 let next_token = self.next_token_internal()?;
                 match next_token.kind {
+                    TokenKind::Assign => {
+                        // Check if our `expr` is an identifier
+                        match expr {
+                            Expression::Identifier(xs) if xs.len() == 1 => {
+                                let ident = xs[0].clone();
+                                let value = self.parse_expr()?;
+                                Ok(Statement::Assignment {
+                                    mutable: true,
+                                    visibility,
+                                    parameter: ident,
+                                    value,
+                                })
+                            }
+                            _ => Err(ParseError::Static(
+                                "left-hand side of `:=` must be an identifier",
+                                None,
+                            )),
+                        }
+                    }
                     TokenKind::Equal => {
                         let value = self.parse_expr()?;
                         Ok(Statement::Reassignment {
@@ -1382,7 +1441,7 @@ pub fn hoist_assignments(statements: Vec<Statement>) -> Vec<Statement> {
     let mut imports = Vec::new();
     let mut class_forward_declarations = Vec::new();
     let mut assignments = Vec::new();
-    let mut others = Vec::new();
+    let others = Vec::new();
 
     for statement in statements {
         match statement {
